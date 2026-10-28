@@ -32,11 +32,14 @@
   svg.icon { width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; }
   kbd { font:11px/1 -apple-system, sans-serif; padding:2px 5px; border-radius:4px; background:var(--chip); color:var(--text-muted); }
   button { font:inherit; color:inherit; }
+  /* Areas that drag the window. macOS swallows every click inside a drag region, so only empty strips get it,
+     and anything clickable inside one opts out */
   .window-drag { -webkit-app-region:drag; }
-  .window-drag :is(button, input, a) { -webkit-app-region:no-drag; }
+  .window-drag :is(button, input, label, a) { -webkit-app-region:no-drag; }
 
   /* ---- Sidebar (vibrancy shows what's behind the window) ---- */
-  aside { background:var(--sidebar-background); border-right:1px solid var(--border); overflow:auto; padding:48px 10px 12px; display:flex; flex-direction:column; }
+  aside { background:var(--sidebar-background); border-right:1px solid var(--border); overflow:auto; padding:0 10px 12px; display:flex; flex-direction:column; }
+  .sidebar-drag-area { flex:none; height:48px; margin:0 -10px; } /* empty strip beside the traffic-light buttons */
   aside.collapsed { padding:0; border:0; overflow:hidden; }
   aside h3 { margin:16px 8px 4px; font-size:11px; font-weight:600; color:var(--text-muted); letter-spacing:.02em; }
   .nav-row { display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:7px; cursor:default; color:var(--text-secondary); }
@@ -200,7 +203,8 @@
   <symbol id="icon-command" viewBox="0 0 24 24"><path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z"/></symbol>
 </svg>
 
-<aside class="window-drag">
+<aside>
+  <div class="sidebar-drag-area window-drag"></div>
   <h3>Library</h3><div id="library-rows"></div>
   <h3>Folders</h3><div id="folder-rows"></div>
   <h3>Tags</h3><div id="tag-chips"></div>
