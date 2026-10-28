@@ -1,0 +1,6 @@
+{
+  "name": "keepsight",
+  "description": "KeepSight for Claude: save HTML pages and claude.ai Artifacts into a local library, bookmark every Artifact you publish, and open the KeepSight app",
+  "version": "0.1.0",
+  "author": { "name": "taehyun.kang" }
+}

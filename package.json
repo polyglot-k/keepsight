@@ -1,0 +1,64 @@
+{
+  "name": "keepsight",
+  "version": "0.1.0",
+  "description": "Keep every page you make with Claude, and keep the one you are working on in sight. A local macOS library for HTML files and claude.ai Artifacts.",
+  "private": true,
+  "license": "MIT",
+  "author": "taehyun.kang",
+  "repository": "github:polyglot-k/keepsight",
+  "keywords": [
+    "artifacts",
+    "claude",
+    "claude-artifacts",
+    "claude-code",
+    "electron",
+    "focus",
+    "html-viewer",
+    "keepsight",
+    "macos"
+  ],
+  "main": "app/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node test/store.test.js",
+    "setup": "sh manage.sh setup",
+    "open": "sh manage.sh open",
+    "dist": "electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "dev.keepsight.app",
+    "productName": "KeepSight",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "app/**",
+      "assets/trayTemplate*.png",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    }
+  }
+}

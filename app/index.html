@@ -1,0 +1,1017 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>KeepSight</title>
+<style>
+  :root {
+    --bg:#ffffff; --bg-soft:#f7f7f9; --side:rgba(244,244,247,.72);
+    --fg:#1d1d1f; --fg2:#48484a; --muted:#8e8e93;
+    --line:rgba(0,0,0,.08); --hover:rgba(0,0,0,.045); --chip:rgba(0,0,0,.055);
+    --accent:#5b5bf7; --accent-soft:rgba(91,91,247,.12); --accent-fg:#fff;
+    --danger:#e5484d; --shadow:0 18px 50px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08);
+    --radius:10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#1e1e21; --bg-soft:#232327; --side:rgba(28,28,31,.6);
+      --fg:#f5f5f7; --fg2:#c7c7cc; --muted:#8e8e93;
+      --line:rgba(255,255,255,.08); --hover:rgba(255,255,255,.055); --chip:rgba(255,255,255,.08);
+      --accent:#7c7cff; --accent-soft:rgba(124,124,255,.2);
+      --shadow:0 18px 50px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.3);
+    }
+  }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  html { background:transparent; }
+  body {
+    margin:0; height:100vh; display:grid; grid-template-columns:220px 340px 1fr; overflow:hidden;
+    font:13px/1.4 -apple-system, "SF Pro Text", Inter, "Segoe UI", sans-serif; color:var(--fg);
+    background:transparent; -webkit-font-smoothing:antialiased;
+  }
+  svg.i { width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; }
+  kbd { font:11px/1 -apple-system, sans-serif; padding:2px 5px; border-radius:4px; background:var(--chip); color:var(--muted); }
+  button { font:inherit; color:inherit; }
+  .drag { -webkit-app-region:drag; }
+  .drag :is(button, input, a) { -webkit-app-region:no-drag; }
+
+  /* ---- 사이드바 (창 뒤 배경이 비치는 vibrancy) ---- */
+  aside { background:var(--side); border-right:1px solid var(--line); overflow:auto; padding:48px 10px 12px; display:flex; flex-direction:column; }
+  aside.collapsed { padding:0; border:0; overflow:hidden; }
+  aside h3 { margin:16px 8px 4px; font-size:11px; font-weight:600; color:var(--muted); letter-spacing:.02em; }
+  .nav { display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:7px; cursor:default; color:var(--fg2); }
+  .nav:hover { background:var(--hover); }
+  .nav.on { background:var(--accent-soft); color:var(--accent); }
+  .nav span:first-of-type { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .nav .n { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .nav.on .n { color:inherit; }
+  #tags { display:flex; flex-wrap:wrap; gap:4px; padding:2px 6px; }
+  .chip { display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:20px; background:var(--chip); color:var(--fg2); font-size:11.5px; cursor:default; }
+  .chip:hover { filter:brightness(.97); }
+  .chip.on { background:var(--accent); color:var(--accent-fg); }
+  .dot { width:7px; height:7px; border-radius:50%; flex:none; }
+  .side-foot { margin-top:auto; padding:12px 8px 0; color:var(--muted); font-size:11.5px; display:flex; align-items:center; gap:6px; cursor:default; }
+  .side-foot:hover { color:var(--fg2); }
+
+  /* ---- 목록 ---- */
+  #list-pane { background:var(--bg-soft); border-right:1px solid var(--line); display:flex; flex-direction:column; min-width:0; }
+  #list-head { padding:10px 12px 8px; display:flex; align-items:center; gap:8px; height:52px; }
+  body.side-off #list-head { padding-left:84px; } /* 사이드바를 접으면 신호등 버튼 자리를 비운다 */
+  .search { flex:1; display:flex; align-items:center; gap:6px; padding:0 8px; height:30px; border-radius:8px; background:var(--chip); color:var(--muted); }
+  .search:focus-within { box-shadow:0 0 0 3px var(--accent-soft); background:var(--bg); }
+  #search { flex:1; min-width:0; border:0; outline:0; background:transparent; color:var(--fg); font:inherit; }
+  #list-title { padding:2px 16px 8px; font-size:11px; font-weight:600; color:var(--muted); display:flex; align-items:center; gap:6px; min-height:26px; }
+  #list-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .filter { display:inline-flex; align-items:center; gap:3px; padding:1px 3px 1px 8px; border-radius:20px; background:var(--accent-soft); color:var(--accent); }
+  .filter button { display:grid; place-items:center; width:16px; height:16px; padding:0; border:0; border-radius:50%; background:none; color:inherit; cursor:default; }
+  .filter button:hover { background:var(--accent); color:var(--accent-fg); }
+  .filter svg.i { width:11px; height:11px; }
+  #list { flex:1; overflow:auto; padding:0 8px 12px; }
+  .item { display:flex; gap:10px; padding:9px 10px; border-radius:var(--radius); cursor:default; margin-bottom:2px; }
+  .item:hover { background:var(--hover); }
+  .item.open { background:var(--hover); }
+  .item.on { background:var(--accent-soft); }
+  .item .ic { width:28px; height:28px; border-radius:7px; display:grid; place-items:center; background:var(--chip); color:var(--fg2); flex:none; }
+  .item.on .ic { background:var(--accent); color:var(--accent-fg); }
+  .item .body { min-width:0; flex:1; }
+  .item .t { font-weight:550; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .m { color:var(--muted); font-size:11.5px; margin-top:1px; display:flex; gap:6px; align-items:center; overflow:hidden; white-space:nowrap; }
+  .item .tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:5px; }
+  .tagpill { display:inline-flex; align-items:center; gap:4px; height:18px; padding:0 7px; border-radius:9px; background:var(--chip); color:var(--fg2); font-size:11px; cursor:default; }
+  .tagpill .dot { width:6px; height:6px; }
+  .tagpill:hover { background:var(--accent-soft); color:var(--accent); }
+  .tagpill.on { background:var(--accent); color:var(--accent-fg); }
+  .item .s { color:var(--fg2); font-size:11.5px; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .s mark { background:var(--accent-soft); color:var(--accent); border-radius:3px; padding:0 1px; }
+  .list-empty { padding:40px 16px; text-align:center; color:var(--muted); }
+
+  /* ---- 미리보기 ---- */
+  main { background:var(--bg); display:flex; flex-direction:column; min-width:0; }
+  #bar { display:flex; gap:2px; padding:0 10px; height:52px; border-bottom:1px solid var(--line); align-items:center; }
+  #bar .path { flex:1; min-width:0; padding:0 8px; display:flex; flex-direction:column; justify-content:center; }
+  #bar .path b { font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #bar .path span { color:var(--muted); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #bar .sep { width:1px; height:18px; background:var(--line); margin:0 6px; }
+  .tb { display:grid; place-items:center; width:30px; height:28px; border:0; border-radius:7px; background:none; color:var(--fg2); cursor:default; }
+  .tb:hover:not(:disabled) { background:var(--hover); color:var(--fg); }
+  .tb:disabled { opacity:.35; }
+  .tb.on { background:var(--accent-soft); color:var(--accent); }
+  .tb.danger:hover:not(:disabled) { color:var(--danger); }
+  #stage { flex:1; display:flex; min-height:0; }
+  #panes { flex:1; display:grid; gap:1px; background:var(--line); min-height:0; min-width:0; position:relative; }
+  .pane { display:flex; flex-direction:column; background:var(--bg); min-width:0; min-height:0; outline:2px solid transparent; outline-offset:-2px; }
+  #panes.multi .pane.active { outline-color:var(--accent); }
+  .ph { display:flex; align-items:center; gap:4px; padding:0 6px 0 12px; height:30px; font-size:12px; color:var(--muted); border-bottom:1px solid var(--line); }
+  #panes:not(.multi) .ph:not(.has-tools) { display:none; } /* 칸이 하나면 머리는 도구가 있을 때만 */
+  .ph span { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ph button { height:22px; padding:0 6px; border:0; border-radius:5px; background:none; color:var(--muted); font-size:11px; display:flex; align-items:center; gap:3px; cursor:default; }
+  .ph button:hover { background:var(--hover); color:var(--fg); }
+  .ph button.on { color:var(--accent); }
+  .ph svg.i { width:13px; height:13px; }
+  .ph .ver { color:var(--accent); font-weight:600; }
+  .pane webview { flex:1; background:#fff; }
+  .empty { flex:1; display:flex; flex-direction:column; gap:14px; align-items:center; justify-content:center; color:var(--muted); text-align:center; }
+  .empty .logo { width:56px; height:56px; border-radius:14px; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg, #5b5bf7, #8b5cf6); box-shadow:0 8px 24px rgba(91,91,247,.35); }
+  .empty .logo svg.i { width:28px; height:28px; }
+  .empty h2 { margin:0; font-size:15px; font-weight:600; color:var(--fg); }
+  .empty .keys { display:grid; grid-template-columns:auto auto; gap:6px 14px; font-size:12px; text-align:left; }
+
+  /* ---- 버전 기록 패널 ---- */
+  #history { width:280px; border-left:1px solid var(--line); background:var(--bg-soft); display:flex; flex-direction:column; }
+  #history header { display:flex; align-items:center; padding:10px 8px 6px 14px; font-weight:600; }
+  #history header span { flex:1; }
+  #history p { margin:0 14px 8px; color:var(--muted); font-size:11.5px; }
+  #versions { flex:1; overflow:auto; padding:0 8px 12px; }
+  .ver-row { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; cursor:default; }
+  .ver-row:hover { background:var(--hover); }
+  .ver-row.on { background:var(--accent-soft); }
+  .ver-row .body { flex:1; min-width:0; }
+  .ver-row .t { font-weight:550; }
+  .ver-row .m { font-size:11px; color:var(--muted); }
+  .ver-row .tag { font-size:10px; font-weight:600; color:var(--accent); background:var(--accent-soft); padding:1px 6px; border-radius:10px; }
+  .ver-row button { border:0; border-radius:6px; padding:3px 8px; background:var(--chip); color:var(--fg2); font-size:11px; cursor:default; }
+  .ver-row button:hover { background:var(--accent); color:var(--accent-fg); }
+
+  /* ---- 크기 조절 핸들. 드래그 중엔 webview가 마우스를 삼키지 않게 막는다 ---- */
+  .rz { position:fixed; top:0; bottom:0; width:6px; margin-left:-3px; cursor:col-resize; z-index:5; }
+  .prz { position:absolute; z-index:5; }
+  .prz.v { top:0; bottom:0; width:6px; margin-left:-3px; cursor:col-resize; }
+  .prz.h { left:0; right:0; height:6px; margin-top:-3px; cursor:row-resize; }
+  .rz:hover, .prz:hover { background:var(--accent); opacity:.35; }
+  body.dragging { user-select:none; }
+  body.dragging webview { pointer-events:none; }
+
+  /* 젠 모드(꽉 채움)·미니 창: 미리보기 내용만 남긴다 (칸 머리·테두리까지 숨김) */
+  body:is(.zen,.mini) { grid-template-columns:1fr !important; }
+  body:is(.zen,.mini) :is(aside, #list-pane, #bar, .rz, .ph, #history) { display:none !important; }
+  body:is(.zen,.mini) .pane { outline:0; }
+
+  /* ---- 대화상자 ---- */
+  dialog { border:1px solid var(--line); border-radius:14px; background:var(--bg); color:var(--fg); box-shadow:var(--shadow); padding:0; }
+  dialog::backdrop { background:rgba(0,0,0,.18); backdrop-filter:blur(2px); }
+  dialog.form { width:420px; }
+  dialog.form form { padding:18px 20px; }
+  dialog.form h2 { margin:0 0 6px; font-size:15px; }
+  dialog label { display:block; margin:12px 0 4px; font-size:12px; color:var(--muted); }
+  dialog input { width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:7px; background:var(--bg-soft); color:var(--fg); font:inherit; outline:0; }
+  dialog input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+  dialog menu { display:flex; justify-content:flex-end; gap:8px; padding:0; margin:18px 0 0; }
+  dialog menu button { padding:6px 14px; border:1px solid var(--line); border-radius:7px; background:var(--bg-soft); cursor:default; }
+  dialog menu button[value=ok] { background:var(--accent); color:var(--accent-fg); border-color:transparent; }
+
+  /* ---- 빠른 열기 (⌘K) ---- */
+  #palette { width:620px; margin-top:14vh; overflow:hidden; }
+  #palette .q { display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--line); color:var(--muted); }
+  #palette .q svg.i { width:18px; height:18px; }
+  #palette #pq { flex:1; border:0; outline:0; box-shadow:none; background:transparent; color:var(--fg); font:17px -apple-system, sans-serif; padding:0; }
+  #presults { max-height:360px; overflow:auto; padding:6px; }
+  .pr { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; cursor:default; }
+  .pr.on { background:var(--accent); color:var(--accent-fg); }
+  .pr .ic { width:26px; height:26px; border-radius:6px; display:grid; place-items:center; background:var(--chip); flex:none; }
+  .pr.on .ic { background:rgba(255,255,255,.2); }
+  .pr .t { flex:1; min-width:0; font-weight:550; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pr .f { font-size:11.5px; color:var(--muted); }
+  .pr.on .f { color:rgba(255,255,255,.75); }
+  #palette footer { display:flex; gap:16px; padding:8px 16px; border-top:1px solid var(--line); color:var(--muted); font-size:11.5px; background:var(--bg-soft); }
+</style>
+</head>
+<body>
+<!-- 아이콘 스프라이트: <svg class="i"><use href="#i-이름"/></svg>로 쓴다 -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5.5l-3 13"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></symbol>
+  <symbol id="i-columns" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2M14 9l2 2"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M10 13l-2 2 2 2M14 13l2 2-2 2"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></symbol>
+  <symbol id="i-recent" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4M12 8v4l3 2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4"/></symbol>
+  <symbol id="i-zen" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-mini" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1"/></symbol>
+  <symbol id="i-command" viewBox="0 0 24 24"><path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z"/></symbol>
+</svg>
+
+<aside class="drag">
+  <h3>Library</h3><div id="library"></div>
+  <h3>Folders</h3><div id="folders"></div>
+  <h3>Tags</h3><div id="tags"></div>
+  <div class="side-foot" id="palette-hint"><svg class="i"><use href="#i-command"/></svg>Quick open <kbd>⌘K</kbd></div>
+</aside>
+<section id="list-pane">
+  <div id="list-head" class="drag">
+    <label class="search"><svg class="i"><use href="#i-search"/></svg><input id="search" placeholder="Search titles, tags, content" spellcheck="false"><kbd>/</kbd></label>
+  </div>
+  <div id="list-title"><span id="list-name">All artifacts</span><span id="list-filter"></span><span id="list-count"></span></div>
+  <div id="list"></div>
+</section>
+<main>
+  <div id="bar" class="drag">
+    <button class="tb" id="toggle-side" title="Toggle sidebar (⌘B)"><svg class="i"><use href="#i-sidebar"/></svg></button>
+    <div class="path"><b id="cur-title"></b><span id="path"></span></div>
+    <button class="tb" data-act="open" disabled title="Open in browser (↵)"><svg class="i"><use href="#i-external"/></svg></button>
+    <button class="tb" data-act="editor" disabled title="Open in editor"><svg class="i"><use href="#i-code"/></svg></button>
+    <button class="tb" data-act="reveal" disabled title="Reveal in Finder"><svg class="i"><use href="#i-folder"/></svg></button>
+    <button class="tb" data-act="edit" disabled title="Edit title, tags, folder (⌘E)"><svg class="i"><use href="#i-pencil"/></svg></button>
+    <button class="tb" id="history-btn" disabled title="Version history (⌘Y)"><svg class="i"><use href="#i-clock"/></svg></button>
+    <button class="tb danger" data-act="trash" disabled title="Move to Trash (⌘⌫)"><svg class="i"><use href="#i-trash"/></svg></button>
+    <span class="sep"></span>
+    <button class="tb" id="split" title="Split pane (⌘\)"><svg class="i"><use href="#i-columns"/></svg></button>
+    <button class="tb" id="zen-btn" title="Zen mode (⌘.)"><svg class="i"><use href="#i-zen"/></svg></button>
+    <button class="tb" id="mini-btn" title="Floating mini window (⌘⇧.)"><svg class="i"><use href="#i-mini"/></svg></button>
+    <span class="sep"></span>
+    <button class="tb" id="chrome" title="Import claude.ai login from Chrome"><svg class="i"><use href="#i-key"/></svg></button>
+    <button class="tb" id="add" title="Add link"><svg class="i"><use href="#i-plus"/></svg></button>
+  </div>
+  <div id="stage">
+    <div id="panes"><div class="prz v" id="vrz" title="Double-click to reset"></div><div class="prz h" id="hrz" title="Double-click to reset"></div></div>
+    <section id="history" hidden>
+      <header><span>Version history</span><button class="tb" id="history-close" title="Close"><svg class="i"><use href="#i-x"/></svg></button></header>
+      <p>Every save is kept automatically. Click a version to compare it side by side.</p>
+      <div id="versions"></div>
+    </section>
+  </div>
+</main>
+<div class="rz" id="rz1" title="Double-click to reset"></div>
+<div class="rz" id="rz2" title="Double-click to reset"></div>
+
+<datalist id="folder-list"></datalist>
+
+<dialog id="add-dlg" class="form">
+  <form method="dialog">
+    <h2>Add link</h2>
+    <label>URL (https)</label><input name="url" required pattern="https://.*" placeholder="https://claude.ai/artifact/…">
+    <label>Title</label><input name="title" required>
+    <label>Folder</label><input name="folder" list="folder-list" placeholder="e.g. work/db">
+    <label>Tags</label><input name="tags" placeholder="comma separated">
+    <menu><button value="cancel" formnovalidate>Cancel</button><button value="ok">Add</button></menu>
+  </form>
+</dialog>
+
+<dialog id="edit-dlg" class="form">
+  <form method="dialog">
+    <h2>Edit</h2>
+    <label>Title</label><input name="title">
+    <label>Tags</label><input name="tags" placeholder="comma separated">
+    <label>Folder (empty = root; changing it moves the file)</label><input name="folder" list="folder-list">
+    <menu><button value="cancel" formnovalidate>Cancel</button><button value="ok">Save</button></menu>
+  </form>
+</dialog>
+
+<dialog id="palette">
+  <div class="q"><svg class="i"><use href="#i-search"/></svg><input id="pq" placeholder="Open an artifact…" autocomplete="off" spellcheck="false"></div>
+  <div id="presults"></div>
+  <footer><span><kbd>↵</kbd> open</span><span><kbd>⌘↵</kbd> open in new pane</span><span><kbd>esc</kbd> close</span></footer>
+</dialog>
+
+<script>
+/** @typedef {import('./store').Item} Item */
+/** @typedef {import('./store').Version} Version */
+/**
+ * 미리보기 칸 하나.
+ * @typedef {object} Pane
+ * @property {Item | null} item 띄운 항목 (버전을 띄우면 `version`이 붙는다)
+ * @property {string | null} src webview 주소
+ * @property {number} zoom 줌 배율 (1 = 100%)
+ * @property {number} [loadedAt] 마지막으로 다 불러온 시각(ms). 자동 새로고침 기준
+ * @property {HTMLElement} el
+ * @property {HTMLElement} head 칸 머리
+ * @property {HTMLElement} label
+ * @property {HTMLElement} zoomLabel
+ * @property {HTMLElement} refreshBtn
+ * @property {HTMLElement} empty
+ * @property {Electron.WebviewTag} view
+ */
+const $ = s => document.querySelector(s);
+const MAX_PANES = 4;
+let items = [], visible = [], folder = null, tag = null;
+let panes = [], active = 0;
+
+// 최근 연 항목·링크 자동 새로고침 주기는 보는 사람 편의라 localStorage에 둔다 (실패해도 동작)
+const RECENT = '\0recent'; // 폴더 이름과 겹치지 않는 표식
+const MAX_RECENT = 20;
+const REFRESH_STEPS = [0, 1, 5, 15, 30]; // 분, 0 = 끔
+
+/**
+ * localStorage에서 JSON을 읽는다. 없거나 막혀 있으면 기본값.
+ * @template T
+ * @param {string} k
+ * @param {T} d 기본값
+ * @returns {T}
+ */
+const stored = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+
+/**
+ * localStorage에 JSON으로 쓴다. 실패는 무시한다(편의 기능이라).
+ * @param {string} k
+ * @param {unknown} v
+ */
+const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+let recent = stored('recent', []);
+const refreshMin = stored('refresh', {});
+
+// ---- 크기 조절 ----
+const DEFAULT_SIZES = { w1: 220, w2: 340, col: 50, row: 50, side: true };
+const sizes = { ...DEFAULT_SIZES, ...stored('sizes', {}) };
+
+/**
+ * @param {number} v
+ * @param {number} lo
+ * @param {number} hi
+ * @returns {number}
+ */
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+/**
+ * `sizes`를 화면에 반영하고 저장한다.
+ */
+function applySizes() {
+  const w1 = sizes.side ? sizes.w1 : 0;
+  document.body.style.gridTemplateColumns = `${w1}px ${sizes.w2}px 1fr`;
+  $('aside').classList.toggle('collapsed', !sizes.side);
+  document.body.classList.toggle('side-off', !sizes.side);
+  $('#toggle-side').classList.toggle('on', !sizes.side);
+  $('#rz1').hidden = !sizes.side;
+  $('#rz1').style.left = w1 + 'px';
+  $('#rz2').style.left = w1 + sizes.w2 + 'px';
+  layout();
+  store('sizes', sizes);
+}
+
+/**
+ * 크기 조절 핸들을 끌기·더블클릭(기본값 복원)에 연결한다.
+ * @param {HTMLElement} handle
+ * @param {(e: MouseEvent) => void} onMove `sizes`를 바꾸는 함수
+ * @param {() => void} reset
+ */
+function drag(handle, onMove, reset) {
+  handle.addEventListener('mousedown', e => {
+    e.preventDefault();
+    document.body.classList.add('dragging');
+    const move = ev => { onMove(ev); applySizes(); };
+    const up = () => {
+      document.body.classList.remove('dragging');
+      removeEventListener('mousemove', move);
+      removeEventListener('mouseup', up);
+    };
+    addEventListener('mousemove', move);
+    addEventListener('mouseup', up);
+  });
+  handle.addEventListener('dblclick', () => { reset(); applySizes(); });
+}
+
+/**
+ * @returns {DOMRect}
+ */
+const panesRect = () => $('#panes').getBoundingClientRect();
+drag($('#rz1'), e => { sizes.w1 = clamp(e.clientX, 160, 400); }, () => { sizes.w1 = DEFAULT_SIZES.w1; });
+drag($('#rz2'), e => { sizes.w2 = clamp(e.clientX - (sizes.side ? sizes.w1 : 0), 240, 700); }, () => { sizes.w2 = DEFAULT_SIZES.w2; });
+drag($('#vrz'), e => { const r = panesRect(); sizes.col = clamp((e.clientX - r.left) / r.width * 100, 15, 85); }, () => { sizes.col = 50; });
+drag($('#hrz'), e => { const r = panesRect(); sizes.row = clamp((e.clientY - r.top) / r.height * 100, 15, 85); }, () => { sizes.row = 50; });
+
+/**
+ * 폴더 사이드바를 접고 편다 (⌘B).
+ */
+const toggleSide = () => { sizes.side = !sizes.side; applySizes(); };
+
+/**
+ * 젠 모드(전체 화면, 미리보기만)를 켜고 끈다 (⌘.). 미니 창에서는 무시한다.
+ */
+const toggleZen = () => {
+  if (document.body.classList.contains('mini')) return;
+  window.api.fullScreen(document.body.classList.toggle('zen'));
+  layout();
+};
+
+/**
+ * 미니 창(구석에 작게, 항상 위)을 켜고 끈다 (⌘⇧.). 끌 때 받은 미니 창 위치를 기억해 다음에 쓴다.
+ * @returns {Promise<void>}
+ */
+const toggleMini = async () => {
+  if (document.body.classList.contains('zen')) toggleZen();
+  const on = document.body.classList.toggle('mini');
+  const bounds = await window.api.mini(on, stored('miniBounds', null));
+  if (bounds) store('miniBounds', bounds);
+  layout();
+};
+
+/**
+ * 요소를 만든다. 파일에서 읽은 문자열은 항상 textContent로 넣는다.
+ * @param {string} tag
+ * @param {string | null} [cls]
+ * @param {unknown} [text]
+ * @returns {HTMLElement}
+ */
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text; // 파일에서 읽은 문자열은 항상 textContent로
+  return e;
+}
+
+/**
+ * 스프라이트 아이콘 요소를 만든다.
+ * @param {string} name `#i-<name>` 심볼 이름
+ * @returns {SVGSVGElement}
+ */
+function icon(name) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'i');
+  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  use.setAttribute('href', '#i-' + name);
+  svg.append(use);
+  return svg;
+}
+
+/**
+ * 태그마다 늘 같은 색 점. 이름 해시로 색상을 고른다.
+ * @param {string} name
+ * @returns {HTMLElement}
+ */
+function tagDot(name) {
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.codePointAt(0)) % 360;
+  const d = el('span', 'dot');
+  d.style.background = `hsl(${h} 65% 55%)`;
+  return d;
+}
+
+const RTF = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+
+/**
+ * "3 min ago" 같은 상대 시각. 일주일이 넘으면 날짜로.
+ * @param {number} t 시각(ms)
+ * @returns {string}
+ */
+function ago(t) {
+  const s = (t - Date.now()) / 1000;
+  for (const [unit, sec] of [['day', 86400], ['hour', 3600], ['minute', 60]]) {
+    if (Math.abs(s) >= sec) return Math.abs(s) >= 7 * 86400 ? new Date(t).toLocaleDateString() : RTF.format(Math.round(s / sec), unit);
+  }
+  return 'just now';
+}
+
+/**
+ * @returns {Item | null} 활성 칸에 열린 항목
+ */
+const cur = () => panes[active]?.item || null;
+
+// ---- 분할 칸 ----
+/**
+ * 칸을 하나 추가하고 활성으로 만든다 (최대 {@link MAX_PANES}개, ⌘\).
+ */
+function addPane() {
+  if (panes.length >= MAX_PANES) return;
+  const p = { item: null, src: null, zoom: 1, el: el('div', 'pane') };
+  p.head = el('div', 'ph');
+  p.label = el('span', null, 'Empty');
+  p.zoomLabel = el('button', 'zoom');
+  p.zoomLabel.title = 'Reset zoom (⌘0)';
+  p.zoomLabel.hidden = true;
+  p.zoomLabel.onclick = e => { e.stopPropagation(); p.zoom = 1; applyZoom(p); };
+  p.refreshBtn = el('button', 'refresh');
+  p.refreshBtn.title = 'Auto-refresh interval (click to change)';
+  p.refreshBtn.onclick = e => {
+    e.stopPropagation();
+    const path = p.item.path;
+    refreshMin[path] = REFRESH_STEPS[(REFRESH_STEPS.indexOf(refreshMin[path] || 0) + 1) % REFRESH_STEPS.length];
+    if (!refreshMin[path]) delete refreshMin[path];
+    store('refresh', refreshMin);
+    panes.forEach(showRefresh);
+  };
+  const close = el('button');
+  close.append(icon('x'));
+  close.title = 'Close pane';
+  close.onclick = e => { e.stopPropagation(); closePane(panes.indexOf(p)); };
+  p.head.append(p.label, p.refreshBtn, p.zoomLabel, close);
+  p.empty = el('div', 'empty');
+  const logo = el('div', 'logo');
+  logo.append(icon('layers'));
+  const keys = el('div', 'keys');
+  for (const [k, v] of [['⌘K', 'Quick open'], ['⌘\\', 'Split pane'], ['⌘.', 'Zen mode'], ['⌘⇧.', 'Floating mini window']]) keys.append(el('kbd', null, k), el('span', null, v));
+  p.empty.append(logo, el('h2', null, 'Select an artifact'), keys);
+  p.view = document.createElement('webview');
+  p.view.setAttribute('partition', 'persist:claude'); // claude.ai 로그인 유지
+  p.view.setAttribute('allowpopups', ''); // SSO 팝업. 허용 범위는 main.js setWindowOpenHandler가 정한다
+  p.view.hidden = true;
+  p.el.append(p.head, p.empty, p.view);
+  p.el.addEventListener('mousedown', () => setActive(panes.indexOf(p)));
+  p.view.addEventListener('focus', () => setActive(panes.indexOf(p)));
+  p.view.addEventListener('dom-ready', () => applyZoom(p));
+  p.view.addEventListener('did-finish-load', () => { p.loadedAt = Date.now(); });
+  panes.push(p);
+  $('#panes').append(p.el);
+  setActive(panes.length - 1);
+}
+
+/**
+ * 칸을 닫는다. 마지막 칸이면 비우기만 한다.
+ * @param {number} idx
+ */
+function closePane(idx) {
+  if (panes.length === 1) return show(panes[0], null), sync();
+  panes[idx].el.remove();
+  panes.splice(idx, 1);
+  setActive(Math.min(active, panes.length - 1));
+}
+
+/**
+ * @param {number} idx 활성으로 만들 칸 번호
+ */
+function setActive(idx) {
+  active = idx;
+  panes.forEach((p, i) => p.el.classList.toggle('active', i === idx));
+  sync();
+}
+
+/**
+ * 칸에 항목을 띄운다. 같은 주소면 다시 불러오지 않는다.
+ * @param {Pane} p
+ * @param {Item | null} item null이면 칸을 비운다
+ */
+function show(p, item) {
+  p.item = item;
+  // encodeURI는 ?·#을 그대로 두므로 "what?.html" 같은 이름이 잘린다. 경로 조각마다 인코딩한다
+  const src = item && (item.kind === 'link' ? item.url : 'file://' + item.path.split('/').map(encodeURIComponent).join('/'));
+  if (src && src !== p.src) p.view.src = src;
+  p.src = src;
+  p.view.hidden = !item;
+  p.empty.hidden = !!item;
+  p.label.replaceChildren();
+  if (item?.version) p.label.append(el('span', 'ver', ago(item.version) + ' · '));
+  p.label.append(item ? item.title : 'Empty');
+  showRefresh(p);
+}
+
+/**
+ * 자동 새로고침 버튼을 칸 상태에 맞춘다. 로컬 파일은 수정되면 알아서 새로고침되므로 버튼은 링크에만 보인다.
+ * @param {Pane} p
+ */
+function showRefresh(p) {
+  const m = p.item && refreshMin[p.item.path];
+  p.refreshBtn.hidden = p.item?.kind !== 'link';
+  p.refreshBtn.replaceChildren(icon('refresh'), m ? `${m} min` : 'Off');
+  p.refreshBtn.classList.toggle('on', !!m);
+  p.head.classList.toggle('has-tools', !p.refreshBtn.hidden || !p.zoomLabel.hidden || !!p.item?.version);
+}
+
+// ponytail: 30초 단위로 확인하므로 주기가 최대 30초 늦을 수 있다
+setInterval(() => {
+  for (const p of panes) {
+    const m = p.item?.kind === 'link' && refreshMin[p.item.path];
+    if (m && p.loadedAt && Date.now() - p.loadedAt >= m * 60_000) { p.loadedAt = Date.now(); try { p.view.reload(); } catch {} }
+  }
+}, 30_000);
+
+/**
+ * 칸별 줌. webview 줌은 칸마다 독립이지만 문서가 바뀌면 1로 돌아가므로 dom-ready마다 다시 건다.
+ * (CSS zoom은 claude.ai 페이지에 안 먹어서 쓰지 않는다)
+ * @param {Pane} p
+ */
+function applyZoom(p) {
+  p.zoomLabel.hidden = p.zoom === 1;
+  p.zoomLabel.textContent = Math.round(p.zoom * 100) + '%';
+  showRefresh(p);
+  if (!p.src) return;
+  try { p.view.setZoomFactor(p.zoom); } catch {} // 아직 로드 전이면 dom-ready에서 적용된다
+}
+
+/**
+ * 활성 칸을 확대·축소한다.
+ * @param {-1 | 0 | 1} dir 0이면 100%로
+ */
+function zoom(dir) {
+  const p = panes[active];
+  if (!p) return;
+  p.zoom = dir === 0 ? 1 : clamp(Math.round((p.zoom + dir * 0.1) * 10) / 10, 0.3, 2);
+  applyZoom(p);
+}
+
+/**
+ * 칸 개수와 `sizes`에 맞춰 분할 그리드와 핸들 위치를 잡는다.
+ */
+function layout() {
+  const n = panes.length;
+  $('#panes').style.gridTemplateColumns = n === 1 ? '1fr' : `${sizes.col}fr ${100 - sizes.col}fr`;
+  $('#panes').style.gridTemplateRows = n <= 2 ? '1fr' : `${sizes.row}fr ${100 - sizes.row}fr`;
+  $('#vrz').hidden = n < 2;
+  $('#hrz').hidden = n <= 2;
+  $('#vrz').style.left = sizes.col + '%';
+  $('#hrz').style.top = sizes.row + '%';
+  $('#panes').classList.toggle('multi', n > 1);
+  $('#split').disabled = n >= MAX_PANES;
+  $('#zen-btn').classList.toggle('on', document.body.classList.contains('zen'));
+}
+
+/**
+ * 칸 상태가 바뀌면 상단 바, 레이아웃, 목록 하이라이트, 버전 패널을 맞춘다.
+ */
+function sync() {
+  const i = cur();
+  document.querySelectorAll('[data-act]').forEach(b => b.disabled = !i || !!i.version);
+  $('#history-btn').disabled = i?.kind !== 'file';
+  $('#cur-title').textContent = i ? i.title : 'KeepSight';
+  $('#path').textContent = i ? (i.url || i.path) : `${items.length} artifacts`;
+  layout();
+  render();
+  if (!$('#history').hidden && i && !i.version) renderHistory();
+}
+
+// ---- 목록 ----
+/**
+ * 목록을 다시 읽는다. 열려 있는 파일이 수정됐으면 그 칸을 새로고침한다.
+ * @returns {Promise<void>}
+ */
+async function load() {
+  const prev = new Map(items.map(i => [i.path, i.mtime]));
+  ({ items } = await window.api.scan());
+  const byPath = new Map(items.map(i => [i.path, i]));
+  for (const p of panes) {
+    if (!p.item || p.item.version) continue; // 버전 미리보기는 목록에 없으므로 그대로 둔다
+    const n = byPath.get(p.item.path);
+    // 파일 내용이 바뀌었으면 해당 칸을 새로고침 (Claude Code가 고쳐 쓰는 중에 유용)
+    if (n && n.kind === 'file' && n.mtime !== prev.get(n.path) && p.src) { try { p.view.reloadIgnoringCache(); } catch {} }
+    show(p, n || null);
+  }
+  sync();
+}
+
+/**
+ * 사이드바 항목 하나.
+ * @param {string} iconName
+ * @param {string} label
+ * @param {number} n 개수
+ * @param {boolean} on
+ * @param {() => void} onclick
+ * @returns {HTMLElement}
+ */
+function navRow(iconName, label, n, on, onclick) {
+  const d = el('div', 'nav' + (on ? ' on' : ''));
+  d.append(icon(iconName), el('span', null, label), el('span', 'n', n));
+  d.onclick = onclick;
+  return d;
+}
+
+/**
+ * 폴더·태그·목록을 현재 필터(폴더, 태그, 검색어)로 다시 그린다.
+ */
+function render() {
+  const q = $('#search').value.trim().toLowerCase();
+  const recentIdx = new Map(recent.map((path, n) => [path, n]));
+  const inFolder = i => folder === null || (folder === RECENT ? recentIdx.has(i.path) : i.folder === folder || i.folder.startsWith(folder + '/'));
+  const pick = name => () => { folder = folder === name ? null : name; render(); };
+
+  const counts = {};
+  for (const i of items) counts[i.folder] = (counts[i.folder] || 0) + 1;
+  $('#library').replaceChildren(
+    navRow('layers', 'All artifacts', items.length, folder === null, () => { folder = null; render(); }),
+    navRow('recent', 'Recently opened', items.filter(i => recentIdx.has(i.path)).length, folder === RECENT, pick(RECENT)),
+  );
+  $('#folders').replaceChildren(...Object.entries(counts).sort().map(([name, n]) => navRow('folder', name || '(root)', n, folder === name, pick(name))));
+  $('#folder-list').replaceChildren(...Object.keys(counts).filter(Boolean).sort().map(v => Object.assign(el('option'), { value: v })));
+
+  const t = $('#tags'); t.replaceChildren();
+  for (const name of [...new Set(items.filter(inFolder).flatMap(i => i.tags))].sort()) {
+    const c = el('span', 'chip' + (tag === name ? ' on' : ''));
+    c.append(tagDot(name), name);
+    c.onclick = () => setTag(tag === name ? null : name);
+    t.append(c);
+  }
+
+  // 제목·이름·폴더·태그에서 못 찾으면 본문(로컬 HTML)까지 본다. 본문으로 걸린 건 앞뒤 문맥을 보여 준다
+  const snippet = {};
+  visible = items.filter(i => {
+    if (!inFolder(i) || (tag && !i.tags.includes(tag))) return false;
+    if (!q || [i.title, i.name, i.folder, ...i.tags].join(' ').toLowerCase().includes(q)) return true;
+    const at = i.text.toLowerCase().indexOf(q);
+    if (at < 0) return false;
+    snippet[i.path] = [i.text.slice(Math.max(0, at - 16), at), i.text.slice(at, at + q.length), i.text.slice(at + q.length, at + q.length + 60)];
+    return true;
+  });
+  if (folder === RECENT) visible.sort((a, b) => recentIdx.get(a.path) - recentIdx.get(b.path));
+  $('#list-name').textContent = folder === null ? 'All artifacts' : folder === RECENT ? 'Recently opened' : folder || '(root)';
+  // 태그로 거르는 중이면 어떤 태그인지 보여 주고, ×로 바로 해제한다
+  const f = $('#list-filter'); f.replaceChildren();
+  if (tag) {
+    const pill = el('span', 'filter');
+    const clear = el('button');
+    clear.title = 'Clear tag filter (esc)';
+    clear.append(icon('x'));
+    clear.onclick = () => setTag(null);
+    pill.append(tagDot(tag), '#' + tag, clear);
+    f.append(pill);
+  }
+  $('#list-count').textContent = visible.length;
+
+  const openPaths = new Set(panes.map(p => p.item?.path));
+  const l = $('#list'); l.replaceChildren();
+  if (!visible.length) l.append(el('div', 'list-empty', items.length ? 'No matches' : 'Drop HTML files into ~/artifacts to get started'));
+  for (const i of visible) {
+    const d = el('div', 'item' + (cur()?.path === i.path ? ' on' : openPaths.has(i.path) ? ' open' : ''));
+    const ic = el('div', 'ic');
+    ic.append(icon(i.kind === 'link' ? 'link' : 'file'));
+    const body = el('div', 'body');
+    body.append(el('div', 't', i.title));
+    const m = el('div', 'm');
+    m.append(el('span', null, i.folder || '(root)'), '·', el('span', null, ago(i.mtime)));
+    body.append(m);
+    // 줄 안의 태그를 눌러도 그 태그로 거른다 (다시 누르면 해제)
+    if (i.tags.length) {
+      const tags = el('div', 'tags');
+      for (const tg of i.tags) {
+        const pill = el('span', 'tagpill' + (tag === tg ? ' on' : ''));
+        pill.append(tagDot(tg), tg);
+        pill.onclick = e => { e.stopPropagation(); setTag(tag === tg ? null : tg); };
+        tags.append(pill);
+      }
+      body.append(tags);
+    }
+    if (snippet[i.path]) {
+      const [pre, hit, post] = snippet[i.path];
+      const s = el('div', 's');
+      s.append('…' + pre, el('mark', null, hit), post + '…');
+      body.append(s);
+    }
+    d.append(ic, body);
+    d.onclick = () => select(i);
+    d.oncontextmenu = async e => {
+      e.preventDefault();
+      await select(i);
+      const action = await window.api.contextMenu();
+      if (action) act(action);
+    };
+    l.append(d);
+  }
+  document.querySelector('.item.on')?.scrollIntoView({ block: 'nearest' });
+}
+
+/**
+ * 태그 필터를 바꾼다. null이면 해제.
+ * @param {string | null} name
+ */
+function setTag(name) {
+  tag = name;
+  render();
+}
+
+/**
+ * 항목을 활성 칸에 열고 최근 연 항목에 올린다. claude.ai 링크면 로그인 쿠키부터 확인한다.
+ * @param {Item | null} i
+ * @returns {Promise<void>}
+ */
+async function select(i) {
+  // 실패해도 미리보기는 띄운다. 원인은 Chrome 로그인 버튼을 누르면 메시지로 보인다
+  if (i?.kind === 'link' && /^https:\/\/claude\.ai\//.test(i.url)) { try { await window.api.ensureClaudeLogin(); } catch {} }
+  show(panes[active], i);
+  if (i) { recent = [i.path, ...recent.filter(p => p !== i.path)].slice(0, MAX_RECENT); store('recent', recent); }
+  sync();
+}
+
+// ---- 빠른 열기 (⌘K) ----
+let pResults = [], pIdx = 0;
+
+/**
+ * 빠른 열기 점수. 연속으로 포함되면 높게, 글자가 순서대로만 있으면 낮게, 최근에 연 것은 가산.
+ * @param {Item} i
+ * @param {string} q 소문자 검색어
+ * @param {Map<string, number>} recentIdx
+ * @returns {number} 0이면 제외
+ */
+function paletteScore(i, q, recentIdx) {
+  const boost = recentIdx.has(i.path) ? (MAX_RECENT - recentIdx.get(i.path)) * 2 : 0;
+  if (!q) return 1 + boost;
+  const s = `${i.title} ${i.folder} ${i.tags.join(' ')}`.toLowerCase();
+  const at = s.indexOf(q);
+  if (at >= 0) return 100 - Math.min(at, 50) + boost;
+  let k = 0;
+  for (const c of s) if (c === q[k]) k++;
+  return k === q.length ? 10 + boost : 0;
+}
+
+/**
+ * 빠른 열기 결과를 다시 그린다.
+ */
+function renderPalette() {
+  const q = $('#pq').value.trim().toLowerCase();
+  const recentIdx = new Map(recent.map((path, n) => [path, n]));
+  pResults = items.map(i => [paletteScore(i, q, recentIdx), i]).filter(([s]) => s > 0)
+    .sort((a, b) => b[0] - a[0] || b[1].mtime - a[1].mtime).slice(0, 50).map(([, i]) => i);
+  pIdx = clamp(pIdx, 0, Math.max(0, pResults.length - 1));
+  const box = $('#presults'); box.replaceChildren();
+  if (!pResults.length) box.append(el('div', 'list-empty', 'No matches'));
+  pResults.forEach((i, n) => {
+    const r = el('div', 'pr' + (n === pIdx ? ' on' : ''));
+    const ic = el('div', 'ic');
+    ic.append(icon(i.kind === 'link' ? 'link' : 'file'));
+    r.append(ic, el('span', 't', i.title), el('span', 'f', i.folder || '(root)'));
+    r.onmousemove = () => { if (pIdx !== n) { pIdx = n; renderPalette(); } };
+    r.onclick = e => openFromPalette(e.metaKey);
+    box.append(r);
+  });
+  box.querySelector('.pr.on')?.scrollIntoView({ block: 'nearest' });
+}
+
+/**
+ * 빠른 열기를 띄운다 (⌘K, 어디서든 ⌥⌘K). 미니 창이면 먼저 원래 창으로 돌아온다.
+ */
+async function openPalette() {
+  if (document.body.classList.contains('mini')) await toggleMini();
+  if ($('#palette').open) return $('#pq').select();
+  document.querySelectorAll('dialog[open]').forEach(d => d.close());
+  $('#pq').value = '';
+  pIdx = 0;
+  renderPalette();
+  $('#palette').showModal();
+  $('#pq').focus();
+}
+
+/**
+ * 고른 항목을 연다.
+ * @param {boolean} newPane true면 칸을 하나 더 만들어 연다
+ */
+function openFromPalette(newPane) {
+  const i = pResults[pIdx];
+  if (!i) return;
+  $('#palette').close();
+  if (newPane) addPane();
+  select(i);
+}
+
+$('#pq').oninput = () => { pIdx = 0; renderPalette(); };
+$('#pq').onkeydown = e => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); pIdx += e.key === 'ArrowDown' ? 1 : -1; renderPalette(); }
+  if (e.key === 'Enter') { e.preventDefault(); openFromPalette(e.metaKey); }
+};
+$('#palette').onclick = e => { if (e.target === $('#palette')) $('#palette').close(); }; // 바깥(backdrop) 클릭
+$('#palette-hint').onclick = openPalette;
+
+// ---- 버전 기록 ----
+/**
+ * 버전 패널을 열고 닫는다 (⌘Y). 파일에만 쓸 수 있다.
+ */
+function toggleHistory() {
+  const open = $('#history').hidden && cur()?.kind === 'file';
+  $('#history').hidden = !open;
+  $('#history-btn').classList.toggle('on', open);
+  if (open) renderHistory();
+}
+
+/**
+ * 활성 칸 파일의 버전 목록을 그린다. 버전을 누르면 옆 칸에 띄워 비교하고, Restore로 되돌린다.
+ * @returns {Promise<void>}
+ */
+async function renderHistory() {
+  const i = cur();
+  if (i?.kind !== 'file') return;
+  /** @type {Version[]} */
+  const versions = await window.api.history(i.path);
+  const shown = new Set(panes.map(p => p.item?.version && p.item.path));
+  const box = $('#versions'); box.replaceChildren();
+  if (!versions.length) box.append(el('div', 'list-empty', 'No versions yet'));
+  versions.forEach((v, n) => {
+    const r = el('div', 'ver-row' + (shown.has(v.path) ? ' on' : ''));
+    const body = el('div', 'body');
+    body.append(el('div', 't', ago(v.time)), el('div', 'm', `${new Date(v.time).toLocaleString()} · ${(v.size / 1024).toFixed(1)} KB`));
+    r.append(body);
+    if (n === 0) r.append(el('span', 'tag', 'Latest'));
+    else {
+      const b = el('button', null, 'Restore');
+      b.onclick = async e => {
+        e.stopPropagation();
+        if (!confirm(`Restore "${i.title}" to the version from ${new Date(v.time).toLocaleString()}?\nThe current content is kept as a new version.`)) return;
+        try { await window.api.restore(i.path, v.path); } catch (err) { alert(err.message); }
+      };
+      r.append(b);
+    }
+    r.onclick = () => compareVersion(i, v);
+    box.append(r);
+  });
+}
+
+/**
+ * 버전을 현재 파일 옆 칸에 띄운다. 비교용 칸이 없으면 하나 만든다.
+ * @param {Item} i 현재 파일
+ * @param {Version} v
+ */
+function compareVersion(i, v) {
+  const home = active;
+  let idx = panes.findIndex((p, n) => n !== home && (p.item?.version || !p.item));
+  if (idx < 0) {
+    if (panes.length >= MAX_PANES) idx = panes.findIndex((_, n) => n !== home);
+    else { addPane(); idx = panes.length - 1; }
+  }
+  show(panes[idx], { ...i, path: v.path, version: v.time });
+  setActive(home);
+}
+
+$('#history-btn').onclick = toggleHistory;
+$('#history-close').onclick = toggleHistory;
+
+// ---- 액션 ----
+/**
+ * 활성 항목에 상단 바·우클릭 메뉴의 동작을 실행한다.
+ * @param {'open' | 'editor' | 'reveal' | 'edit' | 'trash'} name
+ * @returns {Promise<void>}
+ */
+async function act(name) {
+  const i = cur();
+  if (!i || i.version) return;
+  if (name === 'edit') return openEdit(i);
+  if (name === 'trash' && !confirm(`Move "${i.title}" to the Trash?`)) return;
+  try { await window.api[name](i.path); } catch (e) { alert(e.message); }
+}
+
+/**
+ * 편집 대화상자를 항목 값으로 채워 연다.
+ * @param {Item} i
+ */
+function openEdit(i) {
+  const form = $('#edit-dlg form');
+  form.title.value = i.title === i.name ? '' : i.title;
+  form.tags.value = i.tags.join(', ');
+  form.folder.value = i.folder;
+  $('#edit-dlg').showModal();
+}
+
+$('#edit-dlg').onclose = async () => {
+  const i = cur();
+  if ($('#edit-dlg').returnValue !== 'ok' || !i) return;
+  const meta = Object.fromEntries(new FormData($('#edit-dlg form')));
+  try {
+    const dest = await window.api.updateMeta(i.path, meta);
+    // 이동했으면 같은 파일을 띄운 모든 칸의 경로를 갱신해야 load()에서 놓치지 않는다
+    for (const p of panes) if (p.item?.path === i.path) p.item = { ...p.item, path: dest };
+    recent = recent.map(p => p === i.path ? dest : p); store('recent', recent);
+    if (refreshMin[i.path]) { refreshMin[dest] = refreshMin[i.path]; delete refreshMin[i.path]; store('refresh', refreshMin); }
+    await load();
+  } catch (e) { alert(e.message); }
+};
+
+document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => act(b.dataset.act));
+$('#search').oninput = render;
+$('#split').onclick = addPane;
+$('#zen-btn').onclick = toggleZen;
+$('#mini-btn').onclick = toggleMini;
+$('#chrome').onclick = async () => {
+  try {
+    const r = await window.api.importChrome();
+    const who = [r.profile.name, r.profile.email].filter(Boolean).join(' · ');
+    alert(`Imported ${r.imported} claude.ai cookies from Chrome profile (${who}).` + (r.failed.length ? `\n${r.failed.length} failed:\n${r.failed.join('\n')}` : ''));
+    for (const p of panes) if (p.item?.kind === 'link') p.view.reload();
+  } catch (e) { alert(e.message); }
+};
+$('#toggle-side').onclick = toggleSide;
+
+$('#add').onclick = () => {
+  $('#add-dlg form').reset();
+  $('#add-dlg form').folder.value = folder && folder !== RECENT ? folder : '';
+  $('#add-dlg').showModal();
+};
+$('#add-dlg').onclose = async () => {
+  if ($('#add-dlg').returnValue !== 'ok') return;
+  const a = Object.fromEntries(new FormData($('#add-dlg form')));
+  try { await window.api.addLink(a); } catch (e) { alert(e.message); }
+};
+
+document.addEventListener('keydown', e => {
+  if (document.querySelector('dialog[open]')) return;
+  const inSearch = document.activeElement === $('#search');
+  if (e.key === 'Escape' && document.body.classList.contains('zen')) return toggleZen();
+  if (e.key === 'Escape' && inSearch) return $('#search').blur();
+  if (e.key === 'Escape' && tag) return setTag(null);
+  if (e.metaKey && e.key === 'k') { e.preventDefault(); return openPalette(); }
+  if (e.metaKey && e.key === '\\') { e.preventDefault(); return addPane(); }
+  if (e.metaKey && e.key === 'Backspace' && !inSearch && cur()) { e.preventDefault(); return act('trash'); }
+  if (e.metaKey && e.key === 'b') { e.preventDefault(); return toggleSide(); }
+  if (e.metaKey && e.key === 'e') { e.preventDefault(); return act('edit'); }
+  if (e.metaKey && e.key === 'y') { e.preventDefault(); return toggleHistory(); }
+  if (e.metaKey && e.key >= '1' && e.key <= '4' && panes[e.key - 1]) { e.preventDefault(); return setActive(e.key - 1); }
+  if (e.key === '/' && !inSearch) { e.preventDefault(); return $('#search').focus(); }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const idx = visible.findIndex(i => i.path === cur()?.path);
+    const next = visible[Math.max(0, Math.min(visible.length - 1, idx + (e.key === 'ArrowDown' ? 1 : -1)))];
+    if (next) select(next);
+  }
+  if (e.key === 'Enter' && cur() && !inSearch) act('open');
+});
+
+window.api.onChanged(load);
+window.api.onZoom(zoom);
+window.api.onZen(toggleZen);
+window.api.onMini(toggleMini);
+window.api.onPalette(openPalette);
+addPane();
+applySizes();
+load();
+</script>
+</body>
+</html>

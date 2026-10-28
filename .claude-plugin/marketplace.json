@@ -1,0 +1,13 @@
+{
+  "name": "keepsight",
+  "description": "KeepSight for Claude: a local library and focus window for everything you make with Claude",
+  "owner": {
+    "name": "taehyun.kang"
+  },
+  "plugins": [
+    {
+      "name": "keepsight",
+      "source": "./"
+    }
+  ]
+}
