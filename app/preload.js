@@ -1,26 +1,26 @@
 /**
- * @file API exposed to the renderer (`window.api`). Node features are reachable only through the IPC calls listed here.
+ * @file The API exposed to the renderer (`window.api`). The renderer can use Node features only through the IPC calls listed here.
  */
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
   scan: () => ipcRenderer.invoke('scan'),
-  open: p => ipcRenderer.invoke('open', p),
-  editor: p => ipcRenderer.invoke('editor', p),
-  reveal: p => ipcRenderer.invoke('reveal', p),
-  trash: p => ipcRenderer.invoke('trash', p),
-  addLink: a => ipcRenderer.invoke('addLink', a),
-  updateMeta: (p, meta) => ipcRenderer.invoke('updateMeta', p, meta),
-  importChrome: () => ipcRenderer.invoke('importChrome'),
+  listVersions: filePath => ipcRenderer.invoke('listVersions', filePath),
+  restoreVersion: (filePath, versionPath) => ipcRenderer.invoke('restoreVersion', filePath, versionPath),
+  open: filePath => ipcRenderer.invoke('open', filePath),
+  editor: filePath => ipcRenderer.invoke('editor', filePath),
+  reveal: filePath => ipcRenderer.invoke('reveal', filePath),
+  trash: filePath => ipcRenderer.invoke('trash', filePath),
+  addLink: link => ipcRenderer.invoke('addLink', link),
+  updateMeta: (filePath, changes) => ipcRenderer.invoke('updateMeta', filePath, changes),
+  importChromeLogin: () => ipcRenderer.invoke('importChromeLogin'),
   ensureClaudeLogin: () => ipcRenderer.invoke('ensureClaudeLogin'),
-  contextMenu: () => ipcRenderer.invoke('contextMenu'),
-  onChanged: fn => ipcRenderer.on('changed', fn),
-  onZoom: fn => ipcRenderer.on('zoom', (_, dir) => fn(dir)),
-  onZen: fn => ipcRenderer.on('zen', fn),
-  fullScreen: on => ipcRenderer.invoke('fullScreen', on),
-  onMini: fn => ipcRenderer.on('mini', fn),
-  mini: (on, saved) => ipcRenderer.invoke('mini', on, saved),
-  onPalette: fn => ipcRenderer.on('palette', fn),
-  history: p => ipcRenderer.invoke('history', p),
-  restore: (p, version) => ipcRenderer.invoke('restore', p, version),
+  showContextMenu: () => ipcRenderer.invoke('showContextMenu'),
+  setFullScreen: enabled => ipcRenderer.invoke('setFullScreen', enabled),
+  setMiniWindow: (enabled, savedBounds) => ipcRenderer.invoke('setMiniWindow', enabled, savedBounds),
+  onLibraryChanged: listener => ipcRenderer.on('libraryChanged', listener),
+  onZoom: listener => ipcRenderer.on('zoom', (_event, direction) => listener(direction)),
+  onToggleZen: listener => ipcRenderer.on('toggleZen', listener),
+  onToggleMini: listener => ipcRenderer.on('toggleMini', listener),
+  onOpenPalette: listener => ipcRenderer.on('openPalette', listener),
 });

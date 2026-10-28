@@ -30,6 +30,8 @@ Use `ARTIFACTS_ROOT` while developing so you do not touch your real `~/artifacts
 
 - Match the surrounding code; there is no formatter or linter.
 - Add a JSDoc comment to every function.
+- Spell names out (`filePath`, `activeItem`, `.pane-header`), including CSS classes and ids. Avoid abbreviations other than well-known ones like `url` or `html`.
+- Keep shared file-format logic in `app/store.js`; the save script and the publish hook import it rather than copying it.
 - Keep dependencies minimal. Prefer Node and Electron built-ins over new packages.
 - Put tests in `test/` and write them with `node:assert`. No test framework.
 

@@ -10,79 +10,67 @@ const path = require('path');
 const crypto = require('crypto');
 const { execFile, execFileSync } = require('child_process');
 
-const CHROME_DIR = path.join(os.homedir(), 'Library/Application Support/Google/Chrome');
-const HOST_SQL = "host_key = 'claude.ai' OR host_key LIKE '%.claude.ai'";
+const CHROME_DATA_DIRECTORY = path.join(os.homedir(), 'Library/Application Support/Google/Chrome');
+const CLAUDE_HOST_CONDITION = "host_key = 'claude.ai' OR host_key LIKE '%.claude.ai'";
+const SAME_SITE_BY_CHROME_VALUE = { '-1': 'unspecified', 0: 'no_restriction', 1: 'lax', 2: 'strict' };
 
 /**
- * Runs a query with the system sqlite3 and returns an array of JSON rows.
- * @param {string} db
- * @param {string} sql
+ * Runs a query with the system sqlite3 and returns the rows as objects.
+ * @param {string} databasePath
+ * @param {string} query
  * @returns {Record<string, any>[]}
  */
-function sqlite(db, sql) {
-  const out = execFileSync('/usr/bin/sqlite3', ['-json', db, sql], { encoding: 'utf8' });
-  return out.trim() ? JSON.parse(out) : [];
+function querySqlite(databasePath, query) {
+  const output = execFileSync('/usr/bin/sqlite3', ['-json', databasePath, query], { encoding: 'utf8' });
+  return output.trim() ? JSON.parse(output) : [];
 }
 
 /**
- * The DB may be locked while Chrome is running, so read a temporary copy and delete it afterwards.
+ * The cookie database may be locked while Chrome is running, so this reads a temporary copy and deletes it afterwards.
  * @template T
- * @param {string} profileDir
- * @param {(db: string) => T} fn
+ * @param {string} profileDirectory
+ * @param {(databasePath: string) => T} readDatabase
  * @returns {T}
  */
-function withCopy(profileDir, fn) {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'chrome-cookies-'));
+function withCookieDatabaseCopy(profileDirectory, readDatabase) {
+  const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'chrome-cookies-'));
   try {
-    const db = path.join(tmp, 'Cookies');
-    fs.copyFileSync(path.join(profileDir, 'Cookies'), db);
-    return fn(db);
+    const databasePath = path.join(temporaryDirectory, 'Cookies');
+    fs.copyFileSync(path.join(profileDirectory, 'Cookies'), databasePath);
+    return readDatabase(databasePath);
   } finally {
-    fs.rmSync(tmp, { recursive: true, force: true });
+    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
   }
 }
 
 /**
  * Picks the Chrome profile with the most claude.ai cookies.
- * @returns {{ dir: string, name?: string, email?: string, n: number }}
- * @throws {Error} if no profile is logged in to claude.ai
+ * @returns {{ directory: string, name?: string, email?: string, cookieCount: number }}
+ * @throws {Error} if no profile is signed in to claude.ai
  */
 function pickProfile() {
-  const info = JSON.parse(fs.readFileSync(path.join(CHROME_DIR, 'Local State'), 'utf8')).profile.info_cache;
+  const profiles = JSON.parse(fs.readFileSync(path.join(CHROME_DATA_DIRECTORY, 'Local State'), 'utf8')).profile.info_cache;
   let best = null;
-  for (const [dir, meta] of Object.entries(info)) {
-    const full = path.join(CHROME_DIR, dir);
-    if (!fs.existsSync(path.join(full, 'Cookies'))) continue;
-    const n = withCopy(full, db => sqlite(db, `SELECT count(*) n FROM cookies WHERE ${HOST_SQL}`)[0].n);
-    if (n && (!best || n > best.n)) best = { dir: full, name: meta.name, email: meta.user_name, n };
+  for (const [profileName, profileInfo] of Object.entries(profiles)) {
+    const directory = path.join(CHROME_DATA_DIRECTORY, profileName);
+    if (!fs.existsSync(path.join(directory, 'Cookies'))) continue;
+    const cookieCount = withCookieDatabaseCopy(directory, databasePath =>
+      querySqlite(databasePath, `SELECT count(*) AS cookie_count FROM cookies WHERE ${CLAUDE_HOST_CONDITION}`)[0].cookie_count);
+    if (cookieCount && (!best || cookieCount > best.cookieCount)) {
+      best = { directory, name: profileInfo.name, email: profileInfo.user_name, cookieCount };
+    }
   }
   if (!best) throw new Error('No Chrome profile is signed in to claude.ai');
   return best;
 }
 
 /**
- * Reads the "Chrome Safe Storage" password from the Keychain. Waits asynchronously because a permission prompt may appear.
+ * Reads the "Chrome Safe Storage" password from the Keychain. Asynchronous because a permission prompt may appear.
  * @returns {Promise<string>}
  */
-const keychainPassword = () => new Promise((resolve, reject) =>
-  execFile('security', ['find-generic-password', '-w', '-s', 'Chrome Safe Storage'], (err, out) =>
-    err ? reject(new Error('Could not read "Chrome Safe Storage" from the Keychain (access may have been denied)')) : resolve(out.trim())));
-
-/**
- * Decrypts a Chrome cookie value (v10).
- * @param {string} hex hex of encrypted_value
- * @param {Buffer} key key from {@link deriveKey}
- * @param {number} metaVersion meta.version of the cookie DB (at 24 or above, the first 32 bytes are a domain hash)
- * @returns {string}
- * @throws {Error} if the format is not v10
- */
-function decrypt(hex, key, metaVersion) {
-  const buf = Buffer.from(hex, 'hex');
-  if (buf.subarray(0, 3).toString() !== 'v10') throw new Error('Unsupported cookie encryption format');
-  const d = crypto.createDecipheriv('aes-128-cbc', key, Buffer.alloc(16, ' '));
-  const plain = Buffer.concat([d.update(buf.subarray(3)), d.final()]);
-  return (metaVersion >= 24 ? plain.subarray(32) : plain).toString('utf8');
-}
+const readKeychainPassword = () => new Promise((resolve, reject) =>
+  execFile('security', ['find-generic-password', '-w', '-s', 'Chrome Safe Storage'], (error, output) =>
+    error ? reject(new Error('Could not read "Chrome Safe Storage" from the Keychain (access may have been denied)')) : resolve(output.trim())));
 
 /**
  * Derives the AES key from the Keychain password.
@@ -90,7 +78,22 @@ function decrypt(hex, key, metaVersion) {
  * @returns {Buffer}
  */
 const deriveKey = password => crypto.pbkdf2Sync(password, 'saltysalt', 1003, 16, 'sha1');
-const SAME_SITE = { '-1': 'unspecified', 0: 'no_restriction', 1: 'lax', 2: 'strict' };
+
+/**
+ * Decrypts a Chrome cookie value (v10).
+ * @param {string} encryptedHex hex of encrypted_value
+ * @param {Buffer} key key from {@link deriveKey}
+ * @param {number} databaseVersion meta.version of the cookie database (at 24 or above, the first 32 bytes are a domain hash)
+ * @returns {string}
+ * @throws {Error} if the format is not v10
+ */
+function decrypt(encryptedHex, key, databaseVersion) {
+  const encrypted = Buffer.from(encryptedHex, 'hex');
+  if (encrypted.subarray(0, 3).toString() !== 'v10') throw new Error('Unsupported cookie encryption format');
+  const decipher = crypto.createDecipheriv('aes-128-cbc', key, Buffer.alloc(16, ' '));
+  const plaintext = Buffer.concat([decipher.update(encrypted.subarray(3)), decipher.final()]);
+  return (databaseVersion >= 24 ? plaintext.subarray(32) : plaintext).toString('utf8');
+}
 
 /**
  * Reads Chrome's claude.ai cookies and returns them in a shape ready for Electron `session.cookies.set()`.
@@ -98,22 +101,23 @@ const SAME_SITE = { '-1': 'unspecified', 0: 'no_restriction', 1: 'lax', 2: 'stri
  */
 async function readClaudeCookies() {
   const profile = pickProfile();
-  const key = deriveKey(await keychainPassword());
-  const cookies = withCopy(profile.dir, db => {
-    const metaVersion = Number(sqlite(db, "SELECT value FROM meta WHERE key = 'version'")[0]?.value || 0);
-    return sqlite(db, `SELECT host_key, name, path, hex(encrypted_value) ev, expires_utc, is_secure, is_httponly, samesite FROM cookies WHERE ${HOST_SQL}`)
-      .map(c => ({
-        url: `https://${c.host_key.replace(/^\./, '')}${c.path}`,
-        domain: c.host_key.startsWith('.') ? c.host_key : undefined, // host-only cookies (no leading dot) stay host-only only if domain is left unset
-        name: c.name,
-        value: decrypt(c.ev, key, metaVersion),
-        path: c.path,
-        secure: !!c.is_secure,
-        httpOnly: !!c.is_httponly,
-        sameSite: SAME_SITE[c.samesite] || 'unspecified',
-        // Chrome uses microseconds since 1601-01-01; 0 means a session cookie
-        expirationDate: c.expires_utc > 0 ? c.expires_utc / 1e6 - 11644473600 : undefined,
-      }));
+  const key = deriveKey(await readKeychainPassword());
+  const cookies = withCookieDatabaseCopy(profile.directory, databasePath => {
+    const databaseVersion = Number(querySqlite(databasePath, "SELECT value FROM meta WHERE key = 'version'")[0]?.value || 0);
+    const rows = querySqlite(databasePath,
+      `SELECT host_key, name, path, hex(encrypted_value) AS encrypted_hex, expires_utc, is_secure, is_httponly, samesite FROM cookies WHERE ${CLAUDE_HOST_CONDITION}`);
+    return rows.map(row => ({
+      url: `https://${row.host_key.replace(/^\./, '')}${row.path}`,
+      domain: row.host_key.startsWith('.') ? row.host_key : undefined, // host-only cookies (no leading dot) stay host-only only if domain is left unset
+      name: row.name,
+      value: decrypt(row.encrypted_hex, key, databaseVersion),
+      path: row.path,
+      secure: !!row.is_secure,
+      httpOnly: !!row.is_httponly,
+      sameSite: SAME_SITE_BY_CHROME_VALUE[row.samesite] || 'unspecified',
+      // Chrome uses microseconds since 1601-01-01; 0 means a session cookie
+      expirationDate: row.expires_utc > 0 ? row.expires_utc / 1e6 - 11644473600 : undefined,
+    }));
   });
   return { profile: { name: profile.name, email: profile.email }, cookies };
 }

@@ -42,8 +42,10 @@ install_claude() {
     cp -R "skills/$s/." "$HOME/.claude/skills/$s/"
     sed "s#\${CLAUDE_PLUGIN_ROOT}#$REPO#g" "skills/$s/SKILL.md" > "$HOME/.claude/skills/$s/SKILL.md"
   done
+  # The hook needs app/store.js, so ~/.claude/hooks gets a one-line loader that runs the hook from this repo
   mkdir -p "$HOME/.claude/hooks"
-  cp hooks/artifact-publish.js "$HOME/.claude/hooks/"
+  node -e 'require("fs").writeFileSync(process.argv[1], `require(${JSON.stringify(process.argv[2])});\n`)' \
+    "$HOME/.claude/hooks/artifact-publish.js" "$REPO/hooks/artifact-publish.js"
   echo "Copied Claude Code skills (keepsight, keepsight-save) and the publish hook to ~/.claude"
   if ! grep -q 'artifact-publish.js' "$HOME/.claude/settings.json" 2>/dev/null; then
     echo '[todo] The publish hook is not registered yet. Add this to "hooks" > "PostToolUse" in ~/.claude/settings.json:'
