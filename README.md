@@ -256,6 +256,6 @@ Issues and PRs are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, co
 
 ## License
 
-[MIT](LICENSE) © taehyun.kang
+[MIT](LICENSE) © polyglot-k
 
 KeepSight is an independent project and is not affiliated with or endorsed by Anthropic. Claude is a trademark of Anthropic.

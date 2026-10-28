@@ -256,6 +256,6 @@ flowchart LR
 
 ## 라이선스
 
-[MIT](LICENSE) © taehyun.kang
+[MIT](LICENSE) © polyglot-k
 
 KeepSight는 독립 프로젝트이며 Anthropic과 제휴하거나 승인받은 프로젝트가 아닙니다. Claude는 Anthropic의 상표입니다.
