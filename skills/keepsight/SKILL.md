@@ -1,30 +1,30 @@
 ---
 name: keepsight
-description: KeepSight 앱(~/artifacts를 보여주는 로컬 Electron 앱, 예전 이름 Artifact Manager)을 켜거나 설치·갱신하는 skill. 사용자가 "keepsight 열어", "킵사이트 켜줘", "artifact 앱 열어", "아티팩트 앱 켜줘", "앱 안 떠", "artifact 앱 셋업/설치/갱신해줘", "자동 실행 꺼줘" 같은 말이나 "open keepsight", "set up / install / update keepsight", "open the artifact app", "turn off autostart" 같은 말을 하면 발동. 파일을 ~/artifacts에 저장하는 일은 keepsight-save skill이 맡는다.
+description: Opens, installs, or updates the KeepSight app (a local Electron app that shows ~/artifacts, formerly Artifact Manager). Triggers when the user says things like "open keepsight", "set up / install / update keepsight", "open the artifact app", "the app won't open", or "turn off autostart". Saving files into ~/artifacts is handled by the keepsight-save skill. Also triggers on Korean requests such as "keepsight 열어", "킵사이트 켜줘", "artifact 앱 열어", "아티팩트 앱 켜줘", "앱 안 떠", "artifact 앱 셋업/설치/갱신해줘", "자동 실행 꺼줘".
 ---
 
 # KeepSight
 
-모든 동작은 저장소의 `manage.sh` 하나로 한다. `${CLAUDE_PLUGIN_ROOT}`는 플러그인으로 설치하면 Claude Code가, `manage.sh setup`으로 설치하면 스크립트가 저장소 경로로 바꿔 넣는다.
+Everything goes through the repo's single `manage.sh`. `${CLAUDE_PLUGIN_ROOT}` is replaced with the repo path by Claude Code when installed as a plugin, or by the script when installed with `manage.sh setup`.
 
-## 열기
+## Open
 
 ```sh
 "${CLAUDE_PLUGIN_ROOT}/manage.sh" open
 ```
 
-- 꺼져 있으면 켜고, 켜져 있으면 숨겨진 창까지 앞으로 가져온다.
-- 실행 결과 한 줄을 그대로 전한다. 앱이 안 뜨면 `/tmp/keepsight.log`를 읽고 원인을 알린다.
+- Starts the app if it is not running; if it is, brings its window (even a hidden one) to the front.
+- Relay the one-line output as is. If the app does not appear, read `/tmp/keepsight.log` and report the cause.
 
-## 설치·갱신
+## Install / update
 
 ```sh
-"${CLAUDE_PLUGIN_ROOT}/manage.sh" setup                 # 로그인 시 자동 실행 포함 (기본)
-"${CLAUDE_PLUGIN_ROOT}/manage.sh" setup --no-autostart  # 자동 실행 없이
+"${CLAUDE_PLUGIN_ROOT}/manage.sh" setup                 # includes launch at login (default)
+"${CLAUDE_PLUGIN_ROOT}/manage.sh" setup --no-autostart  # without launch at login
 ```
 
-- 순서: 의존성 설치(처음만) → `npm test` → `keepsight` 명령 등록 → `~/.claude`에 skill·hook 복사(플러그인으로 설치했으면 건너뜀) → 자동 실행 등록(또는 해제) → 앱 실행. 다시 돌려도 같은 결과가 된다.
-- 플러그인을 업데이트하면 설치 경로가 바뀌므로 `setup`을 다시 돌려야 자동 실행이 새 경로를 가리킨다.
-- 저장소 코드를 고친 뒤 반영할 때도 `setup`을 다시 돌린다. 실행 중인 앱은 새 코드로 다시 켜진다.
-- 출력에 `[todo]`가 있으면 PATH 또는 hook 등록이 빠진 것이다. hook이 `~/.claude/settings.json`에 없다는 안내라면 settings.json은 직접 고치지 말고, 출력된 JSON 조각과 넣을 위치를 사용자에게 보여 준다.
-- 테스트가 실패하면 거기서 멈춘다. 실패 출력을 그대로 보여 준다.
+- Order: install dependencies (first run only) → `npm test` → register the `keepsight` command → copy the skills and hook into `~/.claude` (skipped for plugin installs) → register (or remove) launch at login → start the app. Rerunning gives the same result.
+- Updating the plugin changes its install path, so rerun `setup` to point launch at login at the new path.
+- Rerun `setup` after changing the repo code, too. A running app is restarted with the new code.
+- `[todo]` in the output means PATH or hook registration is missing. If it says the hook is not in `~/.claude/settings.json`, do not edit settings.json yourself; show the user the printed JSON snippet and where to put it.
+- If the tests fail, stop there and show the failure output as is.

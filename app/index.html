@@ -35,7 +35,7 @@
   .drag { -webkit-app-region:drag; }
   .drag :is(button, input, a) { -webkit-app-region:no-drag; }
 
-  /* ---- 사이드바 (창 뒤 배경이 비치는 vibrancy) ---- */
+  /* ---- Sidebar (vibrancy shows what's behind the window) ---- */
   aside { background:var(--side); border-right:1px solid var(--line); overflow:auto; padding:48px 10px 12px; display:flex; flex-direction:column; }
   aside.collapsed { padding:0; border:0; overflow:hidden; }
   aside h3 { margin:16px 8px 4px; font-size:11px; font-weight:600; color:var(--muted); letter-spacing:.02em; }
@@ -53,10 +53,10 @@
   .side-foot { margin-top:auto; padding:12px 8px 0; color:var(--muted); font-size:11.5px; display:flex; align-items:center; gap:6px; cursor:default; }
   .side-foot:hover { color:var(--fg2); }
 
-  /* ---- 목록 ---- */
+  /* ---- List ---- */
   #list-pane { background:var(--bg-soft); border-right:1px solid var(--line); display:flex; flex-direction:column; min-width:0; }
   #list-head { padding:10px 12px 8px; display:flex; align-items:center; gap:8px; height:52px; }
-  body.side-off #list-head { padding-left:84px; } /* 사이드바를 접으면 신호등 버튼 자리를 비운다 */
+  body.side-off #list-head { padding-left:84px; } /* with the sidebar collapsed, leave room for the traffic-light buttons */
   .search { flex:1; display:flex; align-items:center; gap:6px; padding:0 8px; height:30px; border-radius:8px; background:var(--chip); color:var(--muted); }
   .search:focus-within { box-shadow:0 0 0 3px var(--accent-soft); background:var(--bg); }
   #search { flex:1; min-width:0; border:0; outline:0; background:transparent; color:var(--fg); font:inherit; }
@@ -85,7 +85,7 @@
   .item .s mark { background:var(--accent-soft); color:var(--accent); border-radius:3px; padding:0 1px; }
   .list-empty { padding:40px 16px; text-align:center; color:var(--muted); }
 
-  /* ---- 미리보기 ---- */
+  /* ---- Preview ---- */
   main { background:var(--bg); display:flex; flex-direction:column; min-width:0; }
   #bar { display:flex; gap:2px; padding:0 10px; height:52px; border-bottom:1px solid var(--line); align-items:center; }
   #bar .path { flex:1; min-width:0; padding:0 8px; display:flex; flex-direction:column; justify-content:center; }
@@ -102,7 +102,7 @@
   .pane { display:flex; flex-direction:column; background:var(--bg); min-width:0; min-height:0; outline:2px solid transparent; outline-offset:-2px; }
   #panes.multi .pane.active { outline-color:var(--accent); }
   .ph { display:flex; align-items:center; gap:4px; padding:0 6px 0 12px; height:30px; font-size:12px; color:var(--muted); border-bottom:1px solid var(--line); }
-  #panes:not(.multi) .ph:not(.has-tools) { display:none; } /* 칸이 하나면 머리는 도구가 있을 때만 */
+  #panes:not(.multi) .ph:not(.has-tools) { display:none; } /* with a single pane, show the header only when it has tools */
   .ph span { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .ph button { height:22px; padding:0 6px; border:0; border-radius:5px; background:none; color:var(--muted); font-size:11px; display:flex; align-items:center; gap:3px; cursor:default; }
   .ph button:hover { background:var(--hover); color:var(--fg); }
@@ -116,7 +116,7 @@
   .empty h2 { margin:0; font-size:15px; font-weight:600; color:var(--fg); }
   .empty .keys { display:grid; grid-template-columns:auto auto; gap:6px 14px; font-size:12px; text-align:left; }
 
-  /* ---- 버전 기록 패널 ---- */
+  /* ---- Version history panel ---- */
   #history { width:280px; border-left:1px solid var(--line); background:var(--bg-soft); display:flex; flex-direction:column; }
   #history header { display:flex; align-items:center; padding:10px 8px 6px 14px; font-weight:600; }
   #history header span { flex:1; }
@@ -132,7 +132,7 @@
   .ver-row button { border:0; border-radius:6px; padding:3px 8px; background:var(--chip); color:var(--fg2); font-size:11px; cursor:default; }
   .ver-row button:hover { background:var(--accent); color:var(--accent-fg); }
 
-  /* ---- 크기 조절 핸들. 드래그 중엔 webview가 마우스를 삼키지 않게 막는다 ---- */
+  /* ---- Resize handles. While dragging, stop webviews from swallowing the mouse ---- */
   .rz { position:fixed; top:0; bottom:0; width:6px; margin-left:-3px; cursor:col-resize; z-index:5; }
   .prz { position:absolute; z-index:5; }
   .prz.v { top:0; bottom:0; width:6px; margin-left:-3px; cursor:col-resize; }
@@ -141,12 +141,12 @@
   body.dragging { user-select:none; }
   body.dragging webview { pointer-events:none; }
 
-  /* 젠 모드(꽉 채움)·미니 창: 미리보기 내용만 남긴다 (칸 머리·테두리까지 숨김) */
+  /* Zen mode (fill screen) and mini window: keep only the preview content (hide pane headers and borders too) */
   body:is(.zen,.mini) { grid-template-columns:1fr !important; }
   body:is(.zen,.mini) :is(aside, #list-pane, #bar, .rz, .ph, #history) { display:none !important; }
   body:is(.zen,.mini) .pane { outline:0; }
 
-  /* ---- 대화상자 ---- */
+  /* ---- Dialogs ---- */
   dialog { border:1px solid var(--line); border-radius:14px; background:var(--bg); color:var(--fg); box-shadow:var(--shadow); padding:0; }
   dialog::backdrop { background:rgba(0,0,0,.18); backdrop-filter:blur(2px); }
   dialog.form { width:420px; }
@@ -159,7 +159,7 @@
   dialog menu button { padding:6px 14px; border:1px solid var(--line); border-radius:7px; background:var(--bg-soft); cursor:default; }
   dialog menu button[value=ok] { background:var(--accent); color:var(--accent-fg); border-color:transparent; }
 
-  /* ---- 빠른 열기 (⌘K) ---- */
+  /* ---- Quick open (⌘K) ---- */
   #palette { width:620px; margin-top:14vh; overflow:hidden; }
   #palette .q { display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--line); color:var(--muted); }
   #palette .q svg.i { width:18px; height:18px; }
@@ -176,7 +176,7 @@
 </style>
 </head>
 <body>
-<!-- 아이콘 스프라이트: <svg class="i"><use href="#i-이름"/></svg>로 쓴다 -->
+<!-- Icon sprite: use as <svg class="i"><use href="#i-name"/></svg> -->
 <svg width="0" height="0" style="position:absolute">
   <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
@@ -276,14 +276,14 @@
 /** @typedef {import('./store').Item} Item */
 /** @typedef {import('./store').Version} Version */
 /**
- * 미리보기 칸 하나.
+ * One preview pane.
  * @typedef {object} Pane
- * @property {Item | null} item 띄운 항목 (버전을 띄우면 `version`이 붙는다)
- * @property {string | null} src webview 주소
- * @property {number} zoom 줌 배율 (1 = 100%)
- * @property {number} [loadedAt] 마지막으로 다 불러온 시각(ms). 자동 새로고침 기준
+ * @property {Item | null} item displayed item (has `version` when showing a version)
+ * @property {string | null} src webview URL
+ * @property {number} zoom zoom factor (1 = 100%)
+ * @property {number} [loadedAt] time of the last completed load (ms). Basis for auto-refresh
  * @property {HTMLElement} el
- * @property {HTMLElement} head 칸 머리
+ * @property {HTMLElement} head pane header
  * @property {HTMLElement} label
  * @property {HTMLElement} zoomLabel
  * @property {HTMLElement} refreshBtn
@@ -295,22 +295,22 @@ const MAX_PANES = 4;
 let items = [], visible = [], folder = null, tag = null;
 let panes = [], active = 0;
 
-// 최근 연 항목·링크 자동 새로고침 주기는 보는 사람 편의라 localStorage에 둔다 (실패해도 동작)
-const RECENT = '\0recent'; // 폴더 이름과 겹치지 않는 표식
+// Recent items and link auto-refresh intervals are viewer conveniences, so they live in localStorage (works even if it fails)
+const RECENT = '\0recent'; // marker that can't collide with a folder name
 const MAX_RECENT = 20;
-const REFRESH_STEPS = [0, 1, 5, 15, 30]; // 분, 0 = 끔
+const REFRESH_STEPS = [0, 1, 5, 15, 30]; // minutes, 0 = off
 
 /**
- * localStorage에서 JSON을 읽는다. 없거나 막혀 있으면 기본값.
+ * Reads JSON from localStorage. Returns the default if missing or blocked.
  * @template T
  * @param {string} k
- * @param {T} d 기본값
+ * @param {T} d default value
  * @returns {T}
  */
 const stored = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 
 /**
- * localStorage에 JSON으로 쓴다. 실패는 무시한다(편의 기능이라).
+ * Writes JSON to localStorage. Failures are ignored (it's a convenience).
  * @param {string} k
  * @param {unknown} v
  */
@@ -318,7 +318,7 @@ const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } ca
 let recent = stored('recent', []);
 const refreshMin = stored('refresh', {});
 
-// ---- 크기 조절 ----
+// ---- Resizing ----
 const DEFAULT_SIZES = { w1: 220, w2: 340, col: 50, row: 50, side: true };
 const sizes = { ...DEFAULT_SIZES, ...stored('sizes', {}) };
 
@@ -331,7 +331,7 @@ const sizes = { ...DEFAULT_SIZES, ...stored('sizes', {}) };
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 /**
- * `sizes`를 화면에 반영하고 저장한다.
+ * Applies `sizes` to the layout and saves it.
  */
 function applySizes() {
   const w1 = sizes.side ? sizes.w1 : 0;
@@ -347,9 +347,9 @@ function applySizes() {
 }
 
 /**
- * 크기 조절 핸들을 끌기·더블클릭(기본값 복원)에 연결한다.
+ * Wires a resize handle to drag and double-click (reset to default).
  * @param {HTMLElement} handle
- * @param {(e: MouseEvent) => void} onMove `sizes`를 바꾸는 함수
+ * @param {(e: MouseEvent) => void} onMove function that updates `sizes`
  * @param {() => void} reset
  */
 function drag(handle, onMove, reset) {
@@ -378,12 +378,12 @@ drag($('#vrz'), e => { const r = panesRect(); sizes.col = clamp((e.clientX - r.l
 drag($('#hrz'), e => { const r = panesRect(); sizes.row = clamp((e.clientY - r.top) / r.height * 100, 15, 85); }, () => { sizes.row = 50; });
 
 /**
- * 폴더 사이드바를 접고 편다 (⌘B).
+ * Collapses or expands the folder sidebar (⌘B).
  */
 const toggleSide = () => { sizes.side = !sizes.side; applySizes(); };
 
 /**
- * 젠 모드(전체 화면, 미리보기만)를 켜고 끈다 (⌘.). 미니 창에서는 무시한다.
+ * Toggles zen mode (full screen, preview only) (⌘.). Ignored in the mini window.
  */
 const toggleZen = () => {
   if (document.body.classList.contains('mini')) return;
@@ -392,7 +392,7 @@ const toggleZen = () => {
 };
 
 /**
- * 미니 창(구석에 작게, 항상 위)을 켜고 끈다 (⌘⇧.). 끌 때 받은 미니 창 위치를 기억해 다음에 쓴다.
+ * Toggles the mini window (small, in a corner, always on top) (⌘⇧.). Remembers the position returned on exit for next time.
  * @returns {Promise<void>}
  */
 const toggleMini = async () => {
@@ -404,7 +404,7 @@ const toggleMini = async () => {
 };
 
 /**
- * 요소를 만든다. 파일에서 읽은 문자열은 항상 textContent로 넣는다.
+ * Creates an element. Strings read from files always go in via textContent.
  * @param {string} tag
  * @param {string | null} [cls]
  * @param {unknown} [text]
@@ -413,13 +413,13 @@ const toggleMini = async () => {
 function el(tag, cls, text) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
-  if (text != null) e.textContent = text; // 파일에서 읽은 문자열은 항상 textContent로
+  if (text != null) e.textContent = text; // strings read from files always via textContent
   return e;
 }
 
 /**
- * 스프라이트 아이콘 요소를 만든다.
- * @param {string} name `#i-<name>` 심볼 이름
+ * Creates a sprite icon element.
+ * @param {string} name `#i-<name>` symbol name
  * @returns {SVGSVGElement}
  */
 function icon(name) {
@@ -432,7 +432,7 @@ function icon(name) {
 }
 
 /**
- * 태그마다 늘 같은 색 점. 이름 해시로 색상을 고른다.
+ * A stable color dot per tag. Picks the hue from a hash of the name.
  * @param {string} name
  * @returns {HTMLElement}
  */
@@ -447,8 +447,8 @@ function tagDot(name) {
 const RTF = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 
 /**
- * "3 min ago" 같은 상대 시각. 일주일이 넘으면 날짜로.
- * @param {number} t 시각(ms)
+ * Relative time like "3 min ago". Shows a date after a week.
+ * @param {number} t time (ms)
  * @returns {string}
  */
 function ago(t) {
@@ -460,13 +460,13 @@ function ago(t) {
 }
 
 /**
- * @returns {Item | null} 활성 칸에 열린 항목
+ * @returns {Item | null} item open in the active pane
  */
 const cur = () => panes[active]?.item || null;
 
-// ---- 분할 칸 ----
+// ---- Split panes ----
 /**
- * 칸을 하나 추가하고 활성으로 만든다 (최대 {@link MAX_PANES}개, ⌘\).
+ * Adds a pane and makes it active (up to {@link MAX_PANES}, ⌘\).
  */
 function addPane() {
   if (panes.length >= MAX_PANES) return;
@@ -499,8 +499,8 @@ function addPane() {
   for (const [k, v] of [['⌘K', 'Quick open'], ['⌘\\', 'Split pane'], ['⌘.', 'Zen mode'], ['⌘⇧.', 'Floating mini window']]) keys.append(el('kbd', null, k), el('span', null, v));
   p.empty.append(logo, el('h2', null, 'Select an artifact'), keys);
   p.view = document.createElement('webview');
-  p.view.setAttribute('partition', 'persist:claude'); // claude.ai 로그인 유지
-  p.view.setAttribute('allowpopups', ''); // SSO 팝업. 허용 범위는 main.js setWindowOpenHandler가 정한다
+  p.view.setAttribute('partition', 'persist:claude'); // keep the claude.ai login
+  p.view.setAttribute('allowpopups', ''); // SSO popups. main.js setWindowOpenHandler decides which are allowed
   p.view.hidden = true;
   p.el.append(p.head, p.empty, p.view);
   p.el.addEventListener('mousedown', () => setActive(panes.indexOf(p)));
@@ -513,7 +513,7 @@ function addPane() {
 }
 
 /**
- * 칸을 닫는다. 마지막 칸이면 비우기만 한다.
+ * Closes a pane. The last pane is only cleared.
  * @param {number} idx
  */
 function closePane(idx) {
@@ -524,7 +524,7 @@ function closePane(idx) {
 }
 
 /**
- * @param {number} idx 활성으로 만들 칸 번호
+ * @param {number} idx index of the pane to activate
  */
 function setActive(idx) {
   active = idx;
@@ -533,13 +533,13 @@ function setActive(idx) {
 }
 
 /**
- * 칸에 항목을 띄운다. 같은 주소면 다시 불러오지 않는다.
+ * Shows an item in a pane. Does not reload if the URL is the same.
  * @param {Pane} p
- * @param {Item | null} item null이면 칸을 비운다
+ * @param {Item | null} item null clears the pane
  */
 function show(p, item) {
   p.item = item;
-  // encodeURI는 ?·#을 그대로 두므로 "what?.html" 같은 이름이 잘린다. 경로 조각마다 인코딩한다
+  // encodeURI leaves ? and # as-is, which truncates names like "what?.html". Encode each path segment instead
   const src = item && (item.kind === 'link' ? item.url : 'file://' + item.path.split('/').map(encodeURIComponent).join('/'));
   if (src && src !== p.src) p.view.src = src;
   p.src = src;
@@ -552,7 +552,7 @@ function show(p, item) {
 }
 
 /**
- * 자동 새로고침 버튼을 칸 상태에 맞춘다. 로컬 파일은 수정되면 알아서 새로고침되므로 버튼은 링크에만 보인다.
+ * Syncs the auto-refresh button with the pane state. Local files reload on their own when modified, so the button shows only for links.
  * @param {Pane} p
  */
 function showRefresh(p) {
@@ -563,7 +563,7 @@ function showRefresh(p) {
   p.head.classList.toggle('has-tools', !p.refreshBtn.hidden || !p.zoomLabel.hidden || !!p.item?.version);
 }
 
-// ponytail: 30초 단위로 확인하므로 주기가 최대 30초 늦을 수 있다
+// ponytail: checks every 30 seconds, so a refresh can run up to 30 seconds late
 setInterval(() => {
   for (const p of panes) {
     const m = p.item?.kind === 'link' && refreshMin[p.item.path];
@@ -572,8 +572,8 @@ setInterval(() => {
 }, 30_000);
 
 /**
- * 칸별 줌. webview 줌은 칸마다 독립이지만 문서가 바뀌면 1로 돌아가므로 dom-ready마다 다시 건다.
- * (CSS zoom은 claude.ai 페이지에 안 먹어서 쓰지 않는다)
+ * Per-pane zoom. Webview zoom is independent per pane but resets to 1 on navigation, so reapply it on every dom-ready.
+ * (CSS zoom doesn't work on claude.ai pages, so it isn't used)
  * @param {Pane} p
  */
 function applyZoom(p) {
@@ -581,12 +581,12 @@ function applyZoom(p) {
   p.zoomLabel.textContent = Math.round(p.zoom * 100) + '%';
   showRefresh(p);
   if (!p.src) return;
-  try { p.view.setZoomFactor(p.zoom); } catch {} // 아직 로드 전이면 dom-ready에서 적용된다
+  try { p.view.setZoomFactor(p.zoom); } catch {} // if not loaded yet, dom-ready applies it
 }
 
 /**
- * 활성 칸을 확대·축소한다.
- * @param {-1 | 0 | 1} dir 0이면 100%로
+ * Zooms the active pane in or out.
+ * @param {-1 | 0 | 1} dir 0 resets to 100%
  */
 function zoom(dir) {
   const p = panes[active];
@@ -596,7 +596,7 @@ function zoom(dir) {
 }
 
 /**
- * 칸 개수와 `sizes`에 맞춰 분할 그리드와 핸들 위치를 잡는다.
+ * Lays out the split grid and handles from the pane count and `sizes`.
  */
 function layout() {
   const n = panes.length;
@@ -612,7 +612,7 @@ function layout() {
 }
 
 /**
- * 칸 상태가 바뀌면 상단 바, 레이아웃, 목록 하이라이트, 버전 패널을 맞춘다.
+ * When pane state changes, syncs the top bar, layout, list highlight, and version panel.
  */
 function sync() {
   const i = cur();
@@ -625,9 +625,9 @@ function sync() {
   if (!$('#history').hidden && i && !i.version) renderHistory();
 }
 
-// ---- 목록 ----
+// ---- List ----
 /**
- * 목록을 다시 읽는다. 열려 있는 파일이 수정됐으면 그 칸을 새로고침한다.
+ * Reloads the list. Refreshes any pane whose open file was modified.
  * @returns {Promise<void>}
  */
 async function load() {
@@ -635,9 +635,9 @@ async function load() {
   ({ items } = await window.api.scan());
   const byPath = new Map(items.map(i => [i.path, i]));
   for (const p of panes) {
-    if (!p.item || p.item.version) continue; // 버전 미리보기는 목록에 없으므로 그대로 둔다
+    if (!p.item || p.item.version) continue; // version previews aren't in the list, so leave them alone
     const n = byPath.get(p.item.path);
-    // 파일 내용이 바뀌었으면 해당 칸을 새로고침 (Claude Code가 고쳐 쓰는 중에 유용)
+    // Refresh the pane if the file content changed (useful while Claude Code is rewriting it)
     if (n && n.kind === 'file' && n.mtime !== prev.get(n.path) && p.src) { try { p.view.reloadIgnoringCache(); } catch {} }
     show(p, n || null);
   }
@@ -645,10 +645,10 @@ async function load() {
 }
 
 /**
- * 사이드바 항목 하나.
+ * One sidebar entry.
  * @param {string} iconName
  * @param {string} label
- * @param {number} n 개수
+ * @param {number} n count
  * @param {boolean} on
  * @param {() => void} onclick
  * @returns {HTMLElement}
@@ -661,7 +661,7 @@ function navRow(iconName, label, n, on, onclick) {
 }
 
 /**
- * 폴더·태그·목록을 현재 필터(폴더, 태그, 검색어)로 다시 그린다.
+ * Redraws folders, tags, and the list with the current filters (folder, tag, query).
  */
 function render() {
   const q = $('#search').value.trim().toLowerCase();
@@ -686,7 +686,7 @@ function render() {
     t.append(c);
   }
 
-  // 제목·이름·폴더·태그에서 못 찾으면 본문(로컬 HTML)까지 본다. 본문으로 걸린 건 앞뒤 문맥을 보여 준다
+  // If title, name, folder, and tags don't match, search the body (local HTML) too. Body matches show surrounding context
   const snippet = {};
   visible = items.filter(i => {
     if (!inFolder(i) || (tag && !i.tags.includes(tag))) return false;
@@ -698,7 +698,7 @@ function render() {
   });
   if (folder === RECENT) visible.sort((a, b) => recentIdx.get(a.path) - recentIdx.get(b.path));
   $('#list-name').textContent = folder === null ? 'All artifacts' : folder === RECENT ? 'Recently opened' : folder || '(root)';
-  // 태그로 거르는 중이면 어떤 태그인지 보여 주고, ×로 바로 해제한다
+  // When filtering by tag, show which tag, with × to clear it
   const f = $('#list-filter'); f.replaceChildren();
   if (tag) {
     const pill = el('span', 'filter');
@@ -723,7 +723,7 @@ function render() {
     const m = el('div', 'm');
     m.append(el('span', null, i.folder || '(root)'), '·', el('span', null, ago(i.mtime)));
     body.append(m);
-    // 줄 안의 태그를 눌러도 그 태그로 거른다 (다시 누르면 해제)
+    // Clicking a tag in a row also filters by it (click again to clear)
     if (i.tags.length) {
       const tags = el('div', 'tags');
       for (const tg of i.tags) {
@@ -754,7 +754,7 @@ function render() {
 }
 
 /**
- * 태그 필터를 바꾼다. null이면 해제.
+ * Changes the tag filter. null clears it.
  * @param {string | null} name
  */
 function setTag(name) {
@@ -763,27 +763,27 @@ function setTag(name) {
 }
 
 /**
- * 항목을 활성 칸에 열고 최근 연 항목에 올린다. claude.ai 링크면 로그인 쿠키부터 확인한다.
+ * Opens an item in the active pane and adds it to recents. For claude.ai links, checks the login cookies first.
  * @param {Item | null} i
  * @returns {Promise<void>}
  */
 async function select(i) {
-  // 실패해도 미리보기는 띄운다. 원인은 Chrome 로그인 버튼을 누르면 메시지로 보인다
+  // Show the preview even on failure. The Chrome login button shows the reason as a message
   if (i?.kind === 'link' && /^https:\/\/claude\.ai\//.test(i.url)) { try { await window.api.ensureClaudeLogin(); } catch {} }
   show(panes[active], i);
   if (i) { recent = [i.path, ...recent.filter(p => p !== i.path)].slice(0, MAX_RECENT); store('recent', recent); }
   sync();
 }
 
-// ---- 빠른 열기 (⌘K) ----
+// ---- Quick open (⌘K) ----
 let pResults = [], pIdx = 0;
 
 /**
- * 빠른 열기 점수. 연속으로 포함되면 높게, 글자가 순서대로만 있으면 낮게, 최근에 연 것은 가산.
+ * Quick open score. High for a contiguous match, low for an in-order subsequence match, with a bonus for recents.
  * @param {Item} i
- * @param {string} q 소문자 검색어
+ * @param {string} q lowercase query
  * @param {Map<string, number>} recentIdx
- * @returns {number} 0이면 제외
+ * @returns {number} 0 means excluded
  */
 function paletteScore(i, q, recentIdx) {
   const boost = recentIdx.has(i.path) ? (MAX_RECENT - recentIdx.get(i.path)) * 2 : 0;
@@ -797,7 +797,7 @@ function paletteScore(i, q, recentIdx) {
 }
 
 /**
- * 빠른 열기 결과를 다시 그린다.
+ * Redraws quick open results.
  */
 function renderPalette() {
   const q = $('#pq').value.trim().toLowerCase();
@@ -820,7 +820,7 @@ function renderPalette() {
 }
 
 /**
- * 빠른 열기를 띄운다 (⌘K, 어디서든 ⌥⌘K). 미니 창이면 먼저 원래 창으로 돌아온다.
+ * Shows quick open (⌘K, or ⌥⌘K from anywhere). From the mini window, returns to the normal window first.
  */
 async function openPalette() {
   if (document.body.classList.contains('mini')) await toggleMini();
@@ -834,8 +834,8 @@ async function openPalette() {
 }
 
 /**
- * 고른 항목을 연다.
- * @param {boolean} newPane true면 칸을 하나 더 만들어 연다
+ * Opens the selected item.
+ * @param {boolean} newPane true opens it in a new pane
  */
 function openFromPalette(newPane) {
   const i = pResults[pIdx];
@@ -850,12 +850,12 @@ $('#pq').onkeydown = e => {
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); pIdx += e.key === 'ArrowDown' ? 1 : -1; renderPalette(); }
   if (e.key === 'Enter') { e.preventDefault(); openFromPalette(e.metaKey); }
 };
-$('#palette').onclick = e => { if (e.target === $('#palette')) $('#palette').close(); }; // 바깥(backdrop) 클릭
+$('#palette').onclick = e => { if (e.target === $('#palette')) $('#palette').close(); }; // click outside (backdrop)
 $('#palette-hint').onclick = openPalette;
 
-// ---- 버전 기록 ----
+// ---- Version history ----
 /**
- * 버전 패널을 열고 닫는다 (⌘Y). 파일에만 쓸 수 있다.
+ * Toggles the version panel (⌘Y). Files only.
  */
 function toggleHistory() {
   const open = $('#history').hidden && cur()?.kind === 'file';
@@ -865,7 +865,7 @@ function toggleHistory() {
 }
 
 /**
- * 활성 칸 파일의 버전 목록을 그린다. 버전을 누르면 옆 칸에 띄워 비교하고, Restore로 되돌린다.
+ * Renders the version list for the active pane's file. Clicking a version shows it in the next pane for comparison; Restore reverts to it.
  * @returns {Promise<void>}
  */
 async function renderHistory() {
@@ -897,8 +897,8 @@ async function renderHistory() {
 }
 
 /**
- * 버전을 현재 파일 옆 칸에 띄운다. 비교용 칸이 없으면 하나 만든다.
- * @param {Item} i 현재 파일
+ * Shows a version in the pane next to the current file. Creates a comparison pane if there is none.
+ * @param {Item} i current file
  * @param {Version} v
  */
 function compareVersion(i, v) {
@@ -915,9 +915,9 @@ function compareVersion(i, v) {
 $('#history-btn').onclick = toggleHistory;
 $('#history-close').onclick = toggleHistory;
 
-// ---- 액션 ----
+// ---- Actions ----
 /**
- * 활성 항목에 상단 바·우클릭 메뉴의 동작을 실행한다.
+ * Runs a top bar or context menu action on the active item.
  * @param {'open' | 'editor' | 'reveal' | 'edit' | 'trash'} name
  * @returns {Promise<void>}
  */
@@ -930,7 +930,7 @@ async function act(name) {
 }
 
 /**
- * 편집 대화상자를 항목 값으로 채워 연다.
+ * Opens the edit dialog filled with the item's values.
  * @param {Item} i
  */
 function openEdit(i) {
@@ -947,7 +947,7 @@ $('#edit-dlg').onclose = async () => {
   const meta = Object.fromEntries(new FormData($('#edit-dlg form')));
   try {
     const dest = await window.api.updateMeta(i.path, meta);
-    // 이동했으면 같은 파일을 띄운 모든 칸의 경로를 갱신해야 load()에서 놓치지 않는다
+    // After a move, update the path in every pane showing the file so load() doesn't miss it
     for (const p of panes) if (p.item?.path === i.path) p.item = { ...p.item, path: dest };
     recent = recent.map(p => p === i.path ? dest : p); store('recent', recent);
     if (refreshMin[i.path]) { refreshMin[dest] = refreshMin[i.path]; delete refreshMin[i.path]; store('refresh', refreshMin); }

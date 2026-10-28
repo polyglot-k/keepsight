@@ -3,6 +3,10 @@
 </p>
 
 <p align="center">
+  <b>English</b> · <a href="README.ko.md">한국어</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/polyglot-k/keepsight/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/polyglot-k/keepsight/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="macOS" src="https://img.shields.io/badge/platform-macOS-5b5bf7">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-38-8b5cf6">

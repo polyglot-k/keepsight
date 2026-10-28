@@ -1,6 +1,6 @@
 /**
- * @file KeepSight Electron 메인 프로세스. 창·메뉴 막대·단축키를 만들고, renderer 요청(IPC)을 파일 작업으로 처리한다.
- * renderer가 넘긴 경로는 모두 {@link inRoot}로 root 안인지 확인한 뒤에만 쓴다.
+ * @file KeepSight Electron main process. Creates the window, menu bar item, and shortcuts, and handles renderer requests (IPC) as file operations.
+ * Every path from the renderer is used only after {@link inRoot} confirms it is inside root.
  */
 const { app, BrowserWindow, ipcMain, shell, session, Menu, screen, Tray, nativeImage, globalShortcut } = require('electron');
 const fs = require('fs');
@@ -14,16 +14,16 @@ const ROOT = path.resolve(process.env.ARTIFACTS_ROOT || path.join(app.getPath('h
 
 /**
  * @param {string} p
- * @returns {string} root 안의 절대 경로
- * @throws {Error} root 밖 경로일 때
+ * @returns {string} absolute path inside root
+ * @throws {Error} if the path is outside root
  */
 const inRoot = p => store.inRoot(ROOT, p);
 
 /**
- * 파일은 기본 앱으로, `.url`은 브라우저로 연다.
+ * Opens files in the default app and `.url` files in the browser.
  * @param {string} p
  * @returns {Promise<string | void>}
- * @throws {Error} 링크 파일에 https URL이 없을 때
+ * @throws {Error} if the link file has no https URL
  */
 function open(p) {
   p = inRoot(p);
@@ -36,7 +36,7 @@ function open(p) {
 }
 
 /**
- * VS Code(`code`)로 연다. 없으면 기본 앱으로 연다.
+ * Opens in VS Code (`code`). Falls back to the default app if it is missing.
  * @param {string} p
  */
 function openInEditor(p) {
@@ -44,33 +44,33 @@ function openInEditor(p) {
   execFile('code', [p], err => err && shell.openPath(p));
 }
 
-// 창을 닫으면 숨기기만 하고 앱은 메뉴 막대에 남는다. 진짜 종료는 ⌘Q나 메뉴 막대의 "종료"
+// Closing the window only hides it; the app stays in the menu bar. To really quit, use ⌘Q or "Quit" in the menu bar
 let mainWin = null, tray = null, quitting = false;
 
 /**
- * 숨겨지거나 최소화된 메인 창을 앞으로 가져온다.
+ * Brings the hidden or minimized main window to the front.
  */
 const showMain = () => { if (!mainWin) return; if (mainWin.isMinimized()) mainWin.restore(); mainWin.show(); mainWin.focus(); };
 app.on('before-quit', () => { quitting = true; });
 
-// 로그인 자동 실행 + 수동 실행이 겹쳐도 창은 하나만: 두 번째 실행은 기존 창을 앞으로
+// Only one window even if launch-at-login and a manual launch overlap: the second launch focuses the existing window
 if (!app.requestSingleInstanceLock()) app.quit();
 app.on('second-instance', showMain);
 app.on('activate', showMain);
 
-// claude.ai 로그인(SSO)은 팝업으로 열리므로, 인증 도메인 팝업만 같은 세션 창으로 허용한다
+// claude.ai login (SSO) opens in a popup, so allow popups only for auth domains, as windows in the same session
 const PARTITION = 'persist:claude';
 const AUTH_HOSTS = /(^|\.)(claude\.ai|anthropic\.com|google\.com|apple\.com|okta\.com|microsoftonline\.com)$/;
 const isAuthPopup = url => { try { return AUTH_HOSTS.test(new URL(url).hostname); } catch { return false; } };
 
-/** 창 최소 크기. 미니 창일 때만 더 작게 줄일 수 있게 낮춘다 */
+/** Minimum window size. Lowered only in mini window mode so it can shrink further */
 const MIN_SIZE = [720, 420], MINI_MIN_SIZE = [240, 160];
 
 const ZOOM_KEYS = { '=': 1, '+': 1, '-': -1, '0': 0 };
 
 app.on('web-contents-created', (_, wc) => {
-  // ⌘+/⌘-/⌘0은 기본 메뉴가 앱 UI 전체를 확대하고, 미리보기에 포커스가 있으면 키가 앱까지 안 온다.
-  // 그래서 여기서 먼저 가로채 활성 칸 줌으로 보낸다. ⌘.(젠 모드)·⌘⇧.(미니 창)·⌘K(빠른 열기)도 같은 이유로 여기서 처리한다
+  // With the default menu, ⌘+/⌘-/⌘0 zoom the whole app UI, and the keys never reach the app while the preview has focus.
+  // So intercept them here first and route them to the active pane's zoom. ⌘. (zen mode), ⌘⇧. (mini window), and ⌘K (quick open) are handled here for the same reason
   wc.on('before-input-event', (e, input) => {
     const period = input.code === 'Period' || input.key === '.' || input.key === '>';
     const palette = input.key.toLowerCase() === 'k' && !input.shift && !input.alt;
@@ -95,7 +95,7 @@ app.on('web-contents-created', (_, wc) => {
 app.whenReady().then(() => {
   fs.mkdirSync(ROOT, { recursive: true });
 
-  // Google 등은 UA에 Electron이 있으면 "안전하지 않은 브라우저"로 로그인을 막는다
+  // Google and others block login as an "insecure browser" if the UA contains Electron
   const s = session.fromPartition(PARTITION);
   s.setUserAgent(s.getUserAgent().replace(/ Electron\/\S+/, '').replace(/ keepsight\/\S+/, ''));
 
@@ -107,17 +107,17 @@ app.whenReady().then(() => {
   ipcMain.handle('reveal', (_, p) => shell.showItemInFolder(inRoot(p)));
   ipcMain.handle('trash', (_, p) => shell.trashItem(inRoot(p)));
   ipcMain.handle('addLink', (_, a) => store.addLink(ROOT, a));
-  // 젠 모드: 제목 표시줄·메뉴 막대까지 덮는다. simple은 새 Space 전환 애니메이션이 없다
+  // Zen mode: covers the title bar and menu bar too. simple skips the new-Space transition animation
   ipcMain.handle('fullScreen', (e, on) => BrowserWindow.fromWebContents(e.sender).setSimpleFullScreen(!!on));
-  // 미니 창: 구석에 작게, 다른 앱 위에 띄운다. 끌 때 미니 창 위치를 돌려줘 renderer가 기억한다
-  // ponytail: 현재 Space에만 뜬다. 모든 Space를 따라다니게 하려면 setVisibleOnAllWorkspaces (Dock 아이콘 깜빡임 주의)
+  // Mini window: small, in a corner, above other apps. On exit, returns the mini window position so the renderer can remember it
+  // ponytail: shows on the current Space only. To follow across all Spaces use setVisibleOnAllWorkspaces (watch for Dock icon flicker)
   let normalBounds = null, isMini = false;
   const onScreen = b => b && screen.getAllDisplays().some(({ workArea: a }) =>
     b.x >= a.x && b.y >= a.y && b.x + b.width <= a.x + a.width && b.y + b.height <= a.y + a.height);
   ipcMain.handle('mini', (e, on, saved) => {
     const w = BrowserWindow.fromWebContents(e.sender);
     isMini = on;
-    w.setWindowButtonVisibility(!on); // 미니 창에서는 신호등 버튼이 내용을 가리지 않게 숨긴다
+    w.setWindowButtonVisibility(!on); // hide the traffic-light buttons in the mini window so they don't cover content
     if (on) {
       normalBounds = w.getBounds();
       w.setMinimumSize(...MINI_MIN_SIZE);
@@ -135,12 +135,12 @@ app.whenReady().then(() => {
   ipcMain.handle('updateMeta', (_, p, meta) => store.updateMeta(ROOT, p, meta));
 
   /**
-   * 크롬의 claude.ai 쿠키를 앱 세션으로 복사한다. 쿠키 값은 renderer로 돌려보내지 않는다.
+   * Copies Chrome's claude.ai cookies into the app session. Cookie values are never sent back to the renderer.
    * @returns {Promise<{ profile: { name?: string, email?: string }, imported: number, failed: string[] }>}
    */
   async function importChrome() {
     const { profile, cookies } = await readClaudeCookies();
-    // 앱 안에서 실패한 로그인 시도가 남긴 쿠키·저장소가 가져온 쿠키와 섞이지 않게 먼저 비운다
+    // Clear first so cookies/storage left by failed in-app login attempts don't mix with the imported cookies
     for (const c of await s.cookies.get({ domain: 'claude.ai' })) {
       await s.cookies.remove(`https://${c.domain.replace(/^\./, '')}${c.path}`, c.name);
     }
@@ -154,7 +154,7 @@ app.whenReady().then(() => {
   }
   ipcMain.handle('importChrome', importChrome);
 
-  // 목록 우클릭 메뉴. 고른 동작 이름을 돌려주면 renderer가 기존 act()로 처리한다
+  // List context menu. Returns the chosen action name, which the renderer handles with its existing act()
   ipcMain.handle('contextMenu', e => new Promise(resolve => {
     const item = (label, action) => ({ label, click: () => resolve(action) });
     Menu.buildFromTemplate([
@@ -163,7 +163,7 @@ app.whenReady().then(() => {
     ]).popup({ window: BrowserWindow.fromWebContents(e.sender), callback: () => setTimeout(() => resolve(null), 0) });
   }));
 
-  // claude.ai 링크를 열 때 로그인이 없으면 자동으로 가져온다. 키체인 창이 반복되지 않게 실행당 1회만
+  // When opening a claude.ai link without a login, import it automatically. Only once per run so the Keychain prompt doesn't repeat
   let autoTried = false;
   ipcMain.handle('ensureClaudeLogin', async () => {
     if ((await s.cookies.get({ domain: 'claude.ai', name: 'sessionKey' })).length || autoTried) return null;
@@ -177,7 +177,7 @@ app.whenReady().then(() => {
     minWidth: MIN_SIZE[0],
     minHeight: MIN_SIZE[1],
     title: 'KeepSight',
-    // 제목 표시줄을 없애고 신호등 버튼만 사이드바 위에 둔다. 사이드바는 창 뒤가 비치게(vibrancy)
+    // Remove the title bar and keep only the traffic-light buttons above the sidebar. The sidebar shows what's behind the window (vibrancy)
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 18 },
     vibrancy: 'sidebar',
@@ -192,8 +192,8 @@ app.whenReady().then(() => {
   win.loadFile(path.join(__dirname, 'index.html'));
   mainWin = win;
   win.on('close', e => { if (!quitting) { e.preventDefault(); win.hide(); } });
-  // 다른 앱을 쓰는 중에도 ⌘⇧.로 미니 창을 꺼내고 넣는다. 포커스는 뺏지 않는다
-  // (등록에 실패하면, 예컨대 다른 앱이 이미 쓰고 있으면, 앱 안에서만 동작하는 before-input-event 경로가 남는다)
+  // ⌘⇧. shows and hides the mini window even while using another app. It does not steal focus
+  // (If registration fails, e.g. another app already owns it, the in-app before-input-event path still works)
   globalShortcut.register('CommandOrControl+Shift+.', () => {
     if (!win.isVisible()) {
       win.showInactive();
@@ -201,9 +201,9 @@ app.whenReady().then(() => {
     }
     win.webContents.send('mini');
   });
-  // 어디서든 ⌥⌘K로 빠른 열기를 띄운다 (⌘K는 다른 앱들이 많이 써서 전역으로는 피했다)
+  // ⌥⌘K opens quick open from anywhere (⌘K is avoided globally because many other apps use it)
   globalShortcut.register('Alt+CommandOrControl+K', () => { showMain(); win.webContents.send('palette'); });
-  // 메뉴 막대 아이콘은 Template 이미지라 macOS가 밝기·다크 모드에 맞춰 색을 입힌다
+  // The menu bar icon is a Template image, so macOS tints it for light/dark mode
   tray = new Tray(nativeImage.createFromPath(path.join(ASSETS, 'trayTemplate.png')));
   tray.setToolTip('KeepSight');
   tray.setContextMenu(Menu.buildFromTemplate([
@@ -212,14 +212,14 @@ app.whenReady().then(() => {
     { type: 'separator' },
     { label: 'Quit', role: 'quit' },
   ]));
-  // 개발 실행(npm start)에서도 Dock에 앱 아이콘이 보이게 한다. 패키징한 앱은 icns를 쓴다
+  // Show the app icon in the Dock in dev runs (npm start) too. The packaged app uses the icns
   if (!app.isPackaged) app.dock?.setIcon(path.join(__dirname, '..', 'build', 'icon.png'));
 
-  // 시작할 때 모든 HTML의 현재 내용을 버전으로 남겨 둔다. 그래야 첫 수정 전 내용으로도 되돌릴 수 있다
-  // ponytail: 시작마다 전체 파일을 최신 버전과 비교한다. 수천 개로 느려지면 mtime 비교로 바꾼다
+  // On startup, save the current content of every HTML file as a version, so even the pre-first-edit content can be restored
+  // ponytail: compares every file to its latest version on each startup. If thousands of files make it slow, switch to an mtime check
   for (const i of store.scan(ROOT)) if (i.kind === 'file') { try { store.snapshot(ROOT, i.path); } catch {} }
 
-  // 바뀐 HTML은 버전으로 남기고 목록을 갱신한다. 버전 폴더(.history) 자체의 변화는 무시한다
+  // Save changed HTML as a version and refresh the list. Changes inside the version folder (.history) itself are ignored
   let t;
   const changed = new Set();
   fs.watch(ROOT, { recursive: true }, (_, rel) => {

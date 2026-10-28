@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * @file Claude Code PostToolUse(Artifact) hook: publish된 claude.ai Artifact를 ~/artifacts/claude/에 .url로 남긴다 (KeepSight 목록에 바로 뜬다).
- * 플러그인 폴더나 ~/.claude/hooks/에서 단독 실행되므로 store.js에 의존하지 않는다 (형식은 store.js와 동일하게 유지할 것).
+ * @file Claude Code PostToolUse(Artifact) hook: records each published claude.ai Artifact as a .url in ~/artifacts/claude/ (it shows up in KeepSight right away).
+ * Runs standalone from the plugin folder or ~/.claude/hooks/, so it does not depend on store.js (keep the format in sync with store.js).
  */
 const fs = require('fs');
 const os = require('os');
@@ -18,12 +18,12 @@ const clean = s => String(s || '').replace(/[\r\n]/g, ' ').trim();
 
 /**
  * @param {unknown} s
- * @returns {string} 파일 이름으로 쓸 수 있는 80자 이하 문자열
+ * @returns {string} a file-name-safe string of at most 80 characters
  */
 const safeName = s => clean(s).replace(/[\/\\:*?"<>|]/g, '-').replace(/^\.+/, '').slice(0, 80);
 
 /**
- * 이미 기록한 URL 목록. 여기 있으면 재배포이므로 건너뛴다.
+ * URLs already recorded. A URL found here is a redeploy, so it is skipped.
  * @param {string} dir
  * @returns {Set<string>}
  */
@@ -38,10 +38,10 @@ function knownUrls(dir) {
 }
 
 /**
- * Artifact 제목. 입력에 title이 없으면 publish한 HTML 파일의 `<title>`을 읽는다.
- * @param {{ title?: string, file_path?: string }} input Artifact 도구 입력
- * @param {string} [cwd] 상대 경로 기준 폴더
- * @returns {string} 못 찾으면 빈 문자열
+ * Artifact title. If the input has no title, reads `<title>` from the published HTML file.
+ * @param {{ title?: string, file_path?: string }} input Artifact tool input
+ * @param {string} [cwd] base folder for relative paths
+ * @returns {string} empty string if not found
  */
 function titleOf(input, cwd) {
   if (input.title) return clean(input.title);
@@ -55,8 +55,8 @@ function titleOf(input, cwd) {
 }
 
 /**
- * PostToolUse 이벤트를 받아 publish된 claude.ai Artifact URL을 `claude/<제목>.url`로 남긴다. 이미 기록한 URL이나 publish가 아닌 호출은 건너뛴다.
- * @param {{ tool_input?: Record<string, any>, tool_response?: unknown, cwd?: string }} ev hook 입력(JSON)
+ * Takes a PostToolUse event and records the published claude.ai Artifact URL as `claude/<title>.url`. Skips already-recorded URLs and non-publish calls.
+ * @param {{ tool_input?: Record<string, any>, tool_response?: unknown, cwd?: string }} ev hook input (JSON)
  */
 function main(ev) {
   const input = ev.tool_input || {};
@@ -81,6 +81,6 @@ function main(ev) {
 
 let raw = '';
 process.stdin.on('data', d => (raw += d)).on('end', () => {
-  // hook 실패가 Claude 작업을 막으면 안 되므로 에러는 stderr로만 남기고 0으로 끝낸다
+  // A hook failure must not block Claude's work, so errors go to stderr only and the exit code stays 0
   try { main(JSON.parse(raw)); } catch (e) { console.error(`artifact-publish hook: ${e.message}`); }
 });

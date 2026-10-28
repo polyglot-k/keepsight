@@ -1,54 +1,54 @@
 /**
- * @file root 폴더(~/artifacts)를 읽고 쓰는 순수 함수 모음. Electron에 의존하지 않아 테스트에서 바로 부른다.
- * 폴더가 곧 DB다: 1차 분류는 하위 폴더, 2차 분류는 태그(`<meta name="tags">` 또는 `.url`의 `Tags=`).
+ * @file Pure functions that read and write the root folder (~/artifacts). No Electron dependency, so tests call them directly.
+ * The folder is the DB: subfolders are the primary grouping, tags (`<meta name="tags">` or `Tags=` in `.url`) the secondary.
  */
 const fs = require('fs');
 const path = require('path');
 
 /**
- * 목록의 한 항목. 파일 하나(.html 또는 .url)에 대응한다.
+ * One list item. Maps to a single file (.html or .url).
  * @typedef {object} Item
- * @property {string} path 절대 경로
- * @property {string} folder root 기준 폴더 (루트면 '')
- * @property {string} name 확장자를 뺀 파일 이름
- * @property {string} title 제목 (없으면 name)
+ * @property {string} path absolute path
+ * @property {string} folder folder relative to root ('' at the root)
+ * @property {string} name file name without extension
+ * @property {string} title title (name if missing)
  * @property {string[]} tags
- * @property {number} mtime 수정 시각(ms)
+ * @property {number} mtime modification time (ms)
  * @property {'file' | 'link'} kind
- * @property {string} [url] 링크일 때 URL
- * @property {string} text 본문 검색용 텍스트 (링크는 '')
+ * @property {string} [url] URL, for links
+ * @property {string} text body text for search ('' for links)
  */
 
 /**
- * 줄바꿈을 공백으로 바꾸고 앞뒤 공백을 지운다.
+ * Replaces newlines with spaces and trims.
  * @param {unknown} s
  * @returns {string}
  */
 const clean = s => String(s || '').replace(/[\r\n]/g, ' ').trim();
 
 /**
- * 파일 이름으로 쓸 수 없는 문자를 `-`로 바꾸고 80자로 자른다. 앞의 점은 지워 숨김 파일이 되지 않게 한다.
+ * Replaces characters not allowed in file names with `-` and truncates to 80 chars. Strips leading dots so the file isn't hidden.
  * @param {unknown} s
  * @returns {string}
  */
 const safeName = s => clean(s).replace(/[\/\\:*?"<>|]/g, '-').replace(/^\.+/, '').slice(0, 80);
 
 /**
- * 쉼표로 구분된 태그 문자열을 배열로 나눈다. 빈 항목은 버린다.
+ * Splits a comma-separated tag string into an array. Drops empty entries.
  * @param {string | undefined} s
  * @returns {string[]}
  */
 const splitTags = s => (s || '').split(',').map(t => t.trim()).filter(Boolean);
 
 /**
- * HTML 속성·텍스트에 넣을 수 있게 `&`, `<`, `"`를 이스케이프한다.
+ * Escapes `&`, `<`, and `"` for use in HTML attributes and text.
  * @param {string} s
  * @returns {string}
  */
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
 /**
- * {@link esc}의 역변환. 자주 쓰는 엔티티만 되돌린다.
+ * Inverse of {@link esc}. Decodes only common entities.
  * @param {string} s
  * @returns {string}
  */
@@ -58,11 +58,11 @@ const TITLE_RE = /<title[^>]*>([\s\S]*?)<\/title>/i;
 const TAGS_RE = /<meta\s+name=["']tags["']\s+content=["']([^"']*)["'][^>]*>/i;
 
 /**
- * renderer가 넘긴 경로는 신뢰하지 않는다. root 밖이면 거부한다.
+ * Paths from the renderer are untrusted. Rejects anything outside root.
  * @param {string} root
  * @param {string} p
- * @returns {string} 정규화한 절대 경로
- * @throws {Error} root 밖 경로일 때
+ * @returns {string} normalized absolute path
+ * @throws {Error} if the path is outside root
  */
 function inRoot(root, p) {
   const r = path.resolve(p);
@@ -71,7 +71,7 @@ function inRoot(root, p) {
 }
 
 /**
- * `a/b` 형식의 폴더 이름을 안전한 조각으로 나눠 root 아래 절대 경로로 만든다.
+ * Splits an `a/b` folder name into safe segments and builds an absolute path under root.
  * @param {string} root
  * @param {string} folder
  * @returns {string}
@@ -82,7 +82,7 @@ function folderDir(root, folder) {
 }
 
 /**
- * `.url` 파일에서 `[InternetShortcut]` 형식의 key=value 줄만 읽는다.
+ * Reads only the `[InternetShortcut]`-style key=value lines from a `.url` file.
  * @param {string} p
  * @returns {{ url?: string, title?: string, tags: string[] }}
  */
@@ -95,11 +95,11 @@ function readLink(p) {
   return { url: kv.URL, title: kv.Title, tags: splitTags(kv.Tags) };
 }
 
-/** 본문 검색용 텍스트의 최대 길이(자). 큰 파일 때문에 목록 갱신이 무거워지지 않게 자른다 */
+/** Max length (chars) of body search text. Truncated so large files don't make list refresh heavy */
 const MAX_TEXT = 100_000;
 
 /**
- * 본문 검색용 텍스트를 만든다. script/style과 태그를 걷어내고 공백을 접는다. 최대 {@link MAX_TEXT}자.
+ * Builds body search text. Strips script/style and tags and collapses whitespace. At most {@link MAX_TEXT} chars.
  * @param {string} html
  * @returns {string}
  */
@@ -109,7 +109,7 @@ function bodyText(html) {
 }
 
 /**
- * HTML 파일에서 제목·태그(앞 8KB)와 본문 검색용 텍스트를 읽는다.
+ * Reads the title and tags (first 8KB) and the body search text from an HTML file.
  * @param {string} p
  * @returns {{ title?: string, tags: string[], text: string }}
  */
@@ -122,8 +122,8 @@ function readHtml(p) {
 }
 
 /**
- * root 아래의 `.html`·`.url`을 모두 읽어 최근 수정 순으로 돌려준다. 숨김 폴더와 node_modules는 건너뛴다.
- * ponytail: 매번 전체 스캔(본문까지 읽음), 수천 개 넘어 느려지면 mtime 캐시 추가
+ * Reads every `.html` and `.url` under root and returns them most recently modified first. Skips hidden folders and node_modules.
+ * ponytail: full scan every time (bodies included); add an mtime cache if thousands of files make it slow
  * @param {string} root
  * @returns {Item[]}
  */
@@ -153,11 +153,11 @@ function scan(root) {
 }
 
 /**
- * 링크를 `.url` 파일로 만든다. https만 받고, 같은 이름이 있으면 덮어쓰지 않고 실패한다.
+ * Creates a `.url` file for a link. Accepts https only, and fails rather than overwrite an existing name.
  * @param {string} root
  * @param {{ url: string, title?: string, folder?: string, tags?: string }} link
- * @returns {string} 만든 파일 경로
- * @throws {Error} https가 아니거나 같은 이름이 있을 때
+ * @returns {string} path of the created file
+ * @throws {Error} if not https or the name already exists
  */
 function addLink(root, { url, title, folder, tags }) {
   url = clean(url);
@@ -167,15 +167,15 @@ function addLink(root, { url, title, folder, tags }) {
   const dest = inRoot(root, path.join(dir, `${name}.url`));
   fs.mkdirSync(dir, { recursive: true });
   const body = `[InternetShortcut]\nURL=${url}\nTitle=${clean(title)}\nTags=${splitTags(clean(tags)).join(',')}\n`;
-  fs.writeFileSync(dest, body, { flag: 'wx' }); // 같은 이름이 있으면 덮어쓰지 않음
+  fs.writeFileSync(dest, body, { flag: 'wx' }); // never overwrite an existing name
   return dest;
 }
 
 /**
- * 정규식에 걸리는 태그가 있으면 교체하고, 없으면 `<head>` 바로 뒤(없으면 맨 앞)에 넣는다.
+ * Replaces the tag matching the regex, or else inserts it right after `<head>` (or at the start if there is none).
  * @param {string} html
  * @param {RegExp} re
- * @param {string} tag 넣을 태그 문자열
+ * @param {string} tag tag string to insert
  * @returns {string}
  */
 function upsert(html, re, tag) {
@@ -187,12 +187,12 @@ function upsert(html, re, tag) {
 }
 
 /**
- * 제목·태그를 파일에 다시 쓰고, 폴더가 바뀌었으면 파일을 옮긴다.
+ * Writes the title and tags back to the file, and moves it if the folder changed.
  * @param {string} root
- * @param {string} p 대상 파일
+ * @param {string} p target file
  * @param {{ title?: string, tags?: string, folder?: string }} meta
- * @returns {string} 옮긴 뒤의 경로
- * @throws {Error} root 밖 경로이거나 옮길 폴더에 같은 이름이 있을 때
+ * @returns {string} path after the move
+ * @throws {Error} if the path is outside root or the destination folder already has that name
  */
 function updateMeta(root, p, { title, tags, folder }) {
   p = inRoot(root, p);
@@ -220,29 +220,29 @@ function updateMeta(root, p, { title, tags, folder }) {
   return dest;
 }
 
-// ---- 버전 기록: <root>/.history/<상대 경로>/<시각>.html (숨김 폴더라 scan에 안 잡힌다) ----
+// ---- Version history: <root>/.history/<relative path>/<time>.html (hidden folder, so scan skips it) ----
 
-/** 파일 하나당 남기는 최대 버전 수. 넘으면 오래된 것부터 지운다 */
+/** Max versions kept per file. Oldest are deleted beyond this */
 const MAX_VERSIONS = 50;
 
 /**
- * 한 파일의 버전 폴더 경로.
+ * Version folder path for one file.
  * @param {string} root
- * @param {string} p root 안의 파일
+ * @param {string} p file inside root
  * @returns {string}
  */
 const historyDir = (root, p) => path.join(root, '.history', path.relative(root, p));
 
 /**
- * 한 버전.
+ * One version.
  * @typedef {object} Version
- * @property {string} path 버전 파일 경로
- * @property {number} time 저장 시각(ms)
- * @property {number} size 바이트
+ * @property {string} path version file path
+ * @property {number} time save time (ms)
+ * @property {number} size bytes
  */
 
 /**
- * 파일의 버전 목록. 최신이 먼저.
+ * Versions of a file, newest first.
  * @param {string} root
  * @param {string} p
  * @returns {Version[]}
@@ -256,11 +256,11 @@ function listHistory(root, p) {
 }
 
 /**
- * 지금 내용을 새 버전으로 남긴다. 최신 버전과 내용이 같으면 아무것도 하지 않는다.
+ * Saves the current content as a new version. Does nothing if it matches the latest version.
  * @param {string} root
- * @param {string} p HTML 파일
- * @param {number} [now] 버전 시각(ms). 테스트용
- * @returns {string | null} 만든 버전 경로, 변경이 없으면 null
+ * @param {string} p HTML file
+ * @param {number} [now] version time (ms), for tests
+ * @returns {string | null} path of the new version, or null if unchanged
  */
 function snapshot(root, p, now = Date.now()) {
   p = inRoot(root, p);
@@ -270,7 +270,7 @@ function snapshot(root, p, now = Date.now()) {
   if (versions[0] && html.equals(fs.readFileSync(versions[0].path))) return null;
   const dir = historyDir(root, p);
   fs.mkdirSync(dir, { recursive: true });
-  // 같은 밀리초에 두 번 저장돼도 덮어쓰지 않게 최신보다 뒤의 시각을 쓴다
+  // Use a time after the latest so two saves in the same millisecond don't overwrite each other
   const time = Math.max(now, (versions[0]?.time ?? 0) + 1);
   const dest = path.join(dir, `${time}.html`);
   fs.writeFileSync(dest, html);
@@ -279,12 +279,12 @@ function snapshot(root, p, now = Date.now()) {
 }
 
 /**
- * 버전을 되돌린다. 되돌리기 직전 내용도 버전으로 남겨서 되돌리기를 다시 되돌릴 수 있다.
+ * Restores a version. The content just before restoring is also saved as a version, so a restore can itself be undone.
  * @param {string} root
- * @param {string} p 대상 파일
- * @param {string} version {@link listHistory}가 돌려준 버전 경로
- * @returns {string} 대상 파일 경로
- * @throws {Error} 그 파일의 버전이 아닐 때
+ * @param {string} p target file
+ * @param {string} version version path returned by {@link listHistory}
+ * @returns {string} target file path
+ * @throws {Error} if it is not a version of that file
  */
 function restore(root, p, version) {
   p = inRoot(root, p);
@@ -296,7 +296,7 @@ function restore(root, p, version) {
 }
 
 /**
- * 파일을 옮기면 버전 기록도 같이 옮긴다.
+ * When a file moves, its version history moves with it.
  * @param {string} root
  * @param {string} from
  * @param {string} to

@@ -1,8 +1,8 @@
 /**
- * @file 크롬(macOS)의 claude.ai 쿠키를 읽어 복호화한다. 다른 도메인 쿠키는 읽지 않는다.
- * 형식: encrypted_value = 'v10' + AES-128-CBC(key = PBKDF2(키체인 "Chrome Safe Storage", 'saltysalt', 1003, sha1), iv = 공백 16개)
- *       meta.version >= 24 이면 평문 앞 32바이트는 도메인 해시라 잘라낸다.
- * ponytail: v10(macOS)만 지원. 크롬이 형식을 바꾸면 여기만 고치면 된다
+ * @file Reads and decrypts Chrome's (macOS) claude.ai cookies. Cookies for other domains are never read.
+ * Format: encrypted_value = 'v10' + AES-128-CBC(key = PBKDF2(Keychain "Chrome Safe Storage", 'saltysalt', 1003, sha1), iv = 16 spaces)
+ *       If meta.version >= 24, the first 32 bytes of plaintext are a domain hash and are stripped.
+ * ponytail: only v10 (macOS) is supported. If Chrome changes the format, only this file needs fixing
  */
 const fs = require('fs');
 const os = require('os');
@@ -14,7 +14,7 @@ const CHROME_DIR = path.join(os.homedir(), 'Library/Application Support/Google/C
 const HOST_SQL = "host_key = 'claude.ai' OR host_key LIKE '%.claude.ai'";
 
 /**
- * 시스템 sqlite3로 쿼리를 실행해 JSON 행 배열을 돌려준다.
+ * Runs a query with the system sqlite3 and returns an array of JSON rows.
  * @param {string} db
  * @param {string} sql
  * @returns {Record<string, any>[]}
@@ -25,7 +25,7 @@ function sqlite(db, sql) {
 }
 
 /**
- * 크롬이 켜져 있으면 DB가 잠겨 있을 수 있어 임시 사본을 만들어 읽고, 끝나면 지운다.
+ * The DB may be locked while Chrome is running, so read a temporary copy and delete it afterwards.
  * @template T
  * @param {string} profileDir
  * @param {(db: string) => T} fn
@@ -43,9 +43,9 @@ function withCopy(profileDir, fn) {
 }
 
 /**
- * claude.ai 쿠키가 가장 많은 크롬 프로필을 고른다.
+ * Picks the Chrome profile with the most claude.ai cookies.
  * @returns {{ dir: string, name?: string, email?: string, n: number }}
- * @throws {Error} claude.ai에 로그인된 프로필이 없을 때
+ * @throws {Error} if no profile is logged in to claude.ai
  */
 function pickProfile() {
   const info = JSON.parse(fs.readFileSync(path.join(CHROME_DIR, 'Local State'), 'utf8')).profile.info_cache;
@@ -61,7 +61,7 @@ function pickProfile() {
 }
 
 /**
- * 키체인에서 "Chrome Safe Storage" 비밀번호를 읽는다. 허용 창이 뜰 수 있어 비동기로 기다린다.
+ * Reads the "Chrome Safe Storage" password from the Keychain. Waits asynchronously because a permission prompt may appear.
  * @returns {Promise<string>}
  */
 const keychainPassword = () => new Promise((resolve, reject) =>
@@ -69,12 +69,12 @@ const keychainPassword = () => new Promise((resolve, reject) =>
     err ? reject(new Error('Could not read "Chrome Safe Storage" from the Keychain (access may have been denied)')) : resolve(out.trim())));
 
 /**
- * 크롬 쿠키 값(v10)을 복호화한다.
- * @param {string} hex encrypted_value의 hex
- * @param {Buffer} key {@link deriveKey}로 만든 키
- * @param {number} metaVersion 쿠키 DB의 meta.version (24 이상이면 앞 32바이트가 도메인 해시)
+ * Decrypts a Chrome cookie value (v10).
+ * @param {string} hex hex of encrypted_value
+ * @param {Buffer} key key from {@link deriveKey}
+ * @param {number} metaVersion meta.version of the cookie DB (at 24 or above, the first 32 bytes are a domain hash)
  * @returns {string}
- * @throws {Error} v10이 아닌 형식일 때
+ * @throws {Error} if the format is not v10
  */
 function decrypt(hex, key, metaVersion) {
   const buf = Buffer.from(hex, 'hex');
@@ -85,7 +85,7 @@ function decrypt(hex, key, metaVersion) {
 }
 
 /**
- * 키체인 비밀번호로 AES 키를 만든다.
+ * Derives the AES key from the Keychain password.
  * @param {string} password
  * @returns {Buffer}
  */
@@ -93,7 +93,7 @@ const deriveKey = password => crypto.pbkdf2Sync(password, 'saltysalt', 1003, 16,
 const SAME_SITE = { '-1': 'unspecified', 0: 'no_restriction', 1: 'lax', 2: 'strict' };
 
 /**
- * 크롬의 claude.ai 쿠키를 읽어 Electron `session.cookies.set()`에 바로 넣을 수 있는 형태로 돌려준다.
+ * Reads Chrome's claude.ai cookies and returns them in a shape ready for Electron `session.cookies.set()`.
  * @returns {Promise<{ profile: { name?: string, email?: string }, cookies: Electron.CookiesSetDetails[] }>}
  */
 async function readClaudeCookies() {
@@ -104,14 +104,14 @@ async function readClaudeCookies() {
     return sqlite(db, `SELECT host_key, name, path, hex(encrypted_value) ev, expires_utc, is_secure, is_httponly, samesite FROM cookies WHERE ${HOST_SQL}`)
       .map(c => ({
         url: `https://${c.host_key.replace(/^\./, '')}${c.path}`,
-        domain: c.host_key.startsWith('.') ? c.host_key : undefined, // 점 없는 host-only 쿠키는 domain을 비워야 유지된다
+        domain: c.host_key.startsWith('.') ? c.host_key : undefined, // host-only cookies (no leading dot) stay host-only only if domain is left unset
         name: c.name,
         value: decrypt(c.ev, key, metaVersion),
         path: c.path,
         secure: !!c.is_secure,
         httpOnly: !!c.is_httponly,
         sameSite: SAME_SITE[c.samesite] || 'unspecified',
-        // 크롬은 1601-01-01 기준 마이크로초, 0이면 세션 쿠키
+        // Chrome uses microseconds since 1601-01-01; 0 means a session cookie
         expirationDate: c.expires_utc > 0 ? c.expires_utc / 1e6 - 11644473600 : undefined,
       }));
   });

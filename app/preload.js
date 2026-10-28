@@ -1,5 +1,5 @@
 /**
- * @file renderer에 노출하는 API(`window.api`). Node 기능은 여기 나열한 IPC 호출로만 쓸 수 있다.
+ * @file API exposed to the renderer (`window.api`). Node features are reachable only through the IPC calls listed here.
  */
 const { contextBridge, ipcRenderer } = require('electron');
 

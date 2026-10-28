@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * @file HTML 파일을 KeepSight 루트(~/artifacts)에 규칙대로 저장한다. 원본은 건드리지 않는다.
- *   node save-html.js <src.html> [--folder study/db] [--tags a,b] [--title 제목] [--name file-name]
- * - <title>, <meta name="tags">가 없으면 넣고, 인자로 주면 교체한다. 본문은 그대로.
- * - 같은 이름이 있으면 덮어쓰지 않고 -2, -3을 붙인다. 저장한 경로를 stdout으로 출력한다.
- * 플러그인 폴더나 저장소에서 단독 실행되므로 store.js에 의존하지 않는다 (형식은 store.js와 동일하게 유지할 것).
+ * @file Saves an HTML file into the KeepSight root (~/artifacts) following its conventions. The source file is left untouched.
+ *   node save-html.js <src.html> [--folder study/db] [--tags a,b] [--title title] [--name file-name]
+ * - Adds <title> and <meta name="tags"> if missing, or replaces them when given as arguments. The body is left as is.
+ * - Never overwrites: if the name exists, appends -2, -3. Prints the saved path to stdout.
+ * Runs standalone from the plugin folder or the repo, so it does not depend on store.js (keep the format in sync with store.js).
  */
 const fs = require('fs');
 const os = require('os');
@@ -20,7 +20,7 @@ const clean = s => String(s || '').replace(/[\r\n]/g, ' ').trim();
 
 /**
  * @param {unknown} s
- * @returns {string} 파일 이름으로 쓸 수 있는 80자 이하 문자열
+ * @returns {string} a file-name-safe string of at most 80 characters
  */
 const safeName = s => clean(s).replace(/[\/\\:*?"<>|]/g, '-').replace(/^\.+/, '').slice(0, 80);
 
@@ -33,7 +33,7 @@ const TITLE_RE = /<title[^>]*>([\s\S]*?)<\/title>/i;
 const TAGS_RE = /<meta\s+name=["']tags["']\s+content=["']([^"']*)["'][^>]*>/i;
 
 /**
- * 정규식에 걸리는 태그가 있으면 교체하고, 없으면 `<head>` 바로 뒤(없으면 맨 앞)에 넣는다.
+ * Replaces the tag matching the regex, or inserts it right after `<head>` (or at the very start if there is no `<head>`).
  * @param {string} html
  * @param {RegExp} re
  * @param {string} tag
@@ -48,7 +48,7 @@ function upsert(html, re, tag) {
 }
 
 /**
- * `--key value` 형식의 인자를 객체로, 나머지는 `_`에 모은다.
+ * Collects `--key value` arguments into an object and the rest into `_`.
  * @param {string[]} argv
  * @returns {{ _: string[], [key: string]: any }}
  */
@@ -62,11 +62,11 @@ function parseArgs(argv) {
 }
 
 /**
- * HTML을 root 아래에 규칙대로 저장한다. 원본은 건드리지 않고, 같은 이름이 있으면 `-2`, `-3`을 붙인다.
- * @param {string} src 원본 HTML
+ * Saves the HTML under root following the conventions. Leaves the source untouched and appends `-2`, `-3` if the name exists.
+ * @param {string} src source HTML
  * @param {{ folder?: string, tags?: string, title?: string, name?: string }} [opts]
- * @returns {string} 저장한 경로
- * @throws {Error} root 밖 폴더이거나 같은 이름이 너무 많을 때
+ * @returns {string} the saved path
+ * @throws {Error} if the folder is outside root or there are too many files with the same name
  */
 function save(src, { folder = '', tags, title, name } = {}) {
   let html = fs.readFileSync(src, 'utf8');

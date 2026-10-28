@@ -1,12 +1,12 @@
 #!/bin/sh
-# KeepSight 설치·실행 (macOS)
-#   ./manage.sh setup [--no-autostart]   의존성 설치 → 테스트 → `keepsight` 명령 등록 → Claude Code skill·hook 복사(플러그인 설치면 생략) → 로그인 시 자동 실행 등록 → 앱 실행
-#   ./manage.sh open                     앱을 켜거나, 이미 켜져 있으면 창을 앞으로
-# setup 뒤에는 어느 폴더에서든 `keepsight open|setup`으로 부를 수 있다.
-# 몇 번을 다시 실행해도 같은 결과가 되게 짰다. 저장소를 고친 뒤 setup을 다시 돌리면 skill·hook·앱이 갱신된다.
+# KeepSight install and launch (macOS)
+#   ./manage.sh setup [--no-autostart]   install deps -> test -> register the `keepsight` command -> copy Claude Code skills and hook (skipped for plugin installs) -> register launch at login -> start the app
+#   ./manage.sh open                     start the app, or bring its window to the front if already running
+# After setup, run `keepsight open|setup` from any folder.
+# Idempotent: rerunning gives the same result. After changing the repo, rerun setup to refresh the skills, hook, and app.
 set -e
 
-# ~/.local/bin의 심볼릭 링크로 불려도 저장소 경로를 찾도록 링크를 따라간다
+# Follow the symlink so the repo path is found even when called via ~/.local/bin
 REPO=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
 BIN_DIR="$HOME/.local/bin"
 ELECTRON="$REPO/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
@@ -14,14 +14,14 @@ LABEL=com.local.keepsight
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 DOMAIN="gui/$(id -u)"
 
-# 경로에 ?·* 같은 문자가 있어도 맞도록 정규식(pgrep) 대신 명령줄 전체를 그대로 비교한다
+# Compare the full command line instead of a regex (pgrep) so paths containing ? or * still match
 app_pids() { ps -axo pid=,command= | while read -r pid cmd; do [ "$cmd" = "$ELECTRON $REPO" ] && echo "$pid"; done; }
 running() { [ -n "$(app_pids)" ]; }
 loaded() { launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1; }
 
 open_app() {
   if running; then
-    # 단일 인스턴스라 한 번 더 실행하면 기존 창이 앞으로 오고 새 프로세스는 바로 끝난다
+    # Single instance: launching again brings the existing window forward and the new process exits immediately
     "$ELECTRON" "$REPO" >/dev/null 2>&1 &
   elif loaded; then
     launchctl kickstart "$DOMAIN/$LABEL"
@@ -31,8 +31,8 @@ open_app() {
   echo "Opened KeepSight ($REPO)"
 }
 
-# 플러그인으로 설치했으면 Claude Code가 skill·hook을 이미 불러오므로 건너뛴다.
-# 직접 설치할 때는 SKILL.md의 ${CLAUDE_PLUGIN_ROOT}를 이 저장소 경로로 바꿔 ~/.claude에 넣는다
+# Skipped for plugin installs, since Claude Code already loads the skills and hook.
+# For a manual install, replaces ${CLAUDE_PLUGIN_ROOT} in SKILL.md with this repo path and copies into ~/.claude
 install_claude() {
   case "$REPO" in
     "$HOME/.claude/plugins/"*) echo "Installed as a Claude Code plugin; skipping skill and hook copy"; return ;;
@@ -60,7 +60,7 @@ install_bin() {
   esac
 }
 
-# 경로가 설치 위치마다 달라서 plist는 여기서 만든다
+# The plist is generated here because paths differ per install location
 write_plist() {
   cat > "$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -95,7 +95,7 @@ setup() {
     return
   fi
   write_plist
-  # 이미 떠 있는 앱(이전 실행분)은 새 코드로 갈아끼운다
+  # Replace an already-running app (from a previous run) with the new code
   if loaded; then launchctl bootout "$DOMAIN/$LABEL" || true; fi
   for pid in $(app_pids); do kill "$pid"; done
   sleep 1
